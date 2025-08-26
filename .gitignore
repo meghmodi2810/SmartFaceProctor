@@ -1,7 +1,28 @@
-# Default ignored files
-/shelf/
-/workspace.xml
-# Secrets
-*.json
+# Secrets (explicit)
 proctor/core/config/credentials.json
 proctor/core/config/SMTP_credentials.json
+
+# Globally ignore JSON secrets if you like (optional; be careful if you need some json tracked)
+# *.json
+
+# Python
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+
+# Virtual env
+venv/
+.env/
+.venv/
+
+# Django
+*.log
+staticfiles/
+media/
+
+# IDE
+.idea/
+.vscode/
