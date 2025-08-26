@@ -1,0 +1,7 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+# Secrets
+*.json
+proctor/core/config/credentials.json
+proctor/core/config/SMTP_credentials.json
