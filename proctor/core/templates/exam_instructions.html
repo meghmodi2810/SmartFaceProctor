@@ -1,0 +1,206 @@
+{% extends 'student_base.html' %}
+
+{% block title %}Exam Instructions - {{ exam.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .instructions-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    
+    .instructions-header {
+        text-align: center;
+        margin-bottom: 3rem;
+        color: #2d3e50;
+    }
+    
+    .instructions-header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, #2d3e50 0%, #4f8cff 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .instructions-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(44, 62, 80, 0.1);
+        border: 1px solid #e0e7ff;
+    }
+    
+    .exam-info {
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        border-left: 4px solid #4f8cff;
+    }
+    
+    .exam-info h3 {
+        color: #2d3e50;
+        margin-bottom: 1rem;
+    }
+    
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    
+    .info-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .info-item i {
+        color: #4f8cff;
+        font-size: 1.2rem;
+    }
+    
+    .instructions-list {
+        list-style: none;
+        padding: 0;
+    }
+    
+    .instructions-list li {
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background: #f8fafc;
+        border-radius: 8px;
+        border-left: 4px solid #10b981;
+        position: relative;
+    }
+    
+    .instructions-list li::before {
+        content: '✓';
+        position: absolute;
+        left: -10px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: #10b981;
+        color: white;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        font-weight: bold;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-top: 2rem;
+    }
+    
+    .btn {
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(79, 140, 255, 0.4);
+    }
+    
+    .btn-secondary {
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+        color: #4f8cff;
+        border: 2px solid #e0e7ff;
+    }
+    
+    .btn-secondary:hover {
+        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        transform: translateY(-2px);
+    }
+    
+    @media (max-width: 768px) {
+        .instructions-container {
+            padding: 1rem;
+        }
+        
+        .instructions-header h1 {
+            font-size: 2rem;
+        }
+        
+        .action-buttons {
+            flex-direction: column;
+        }
+        
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="instructions-container">
+    <div class="instructions-header">
+        <h1>Exam Instructions</h1>
+        <p>Please read all instructions carefully before starting your exam</p>
+    </div>
+    
+    <div class="instructions-card">
+        <div class="exam-info">
+            <h3>{{ exam.title }}</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <i>📅</i>
+                    <span>{{ exam.date|date:"F d, Y" }}</span>
+                </div>
+                <div class="info-item">
+                    <i>⏰</i>
+                    <span>{{ exam.date|time:"H:i" }}</span>
+                </div>
+                <div class="info-item">
+                    <i>⏱️</i>
+                    <span>{{ exam.duration_minutes }} minutes</span>
+                </div>
+            </div>
+        </div>
+        
+        <h3>Important Instructions:</h3>
+        <ul class="instructions-list">
+            <li>Ensure you have a stable internet connection before starting the exam</li>
+            <li>Make sure your webcam is working and properly positioned</li>
+            <li>Find a quiet, well-lit environment for the exam</li>
+            <li>Close all other applications and browser tabs</li>
+            <li>Do not leave your seat during the exam</li>
+            <li>Do not use any external devices or materials unless specified</li>
+            <li>Keep your face visible to the camera at all times</li>
+            <li>Do not minimize or switch browser windows</li>
+            <li>Submit your answers before the time limit expires</li>
+            <li>Contact support immediately if you encounter technical issues</li>
+        </ul>
+        
+        {% if exam.description %}
+        <h3>Additional Information:</h3>
+        <p>{{ exam.description }}</p>
+        {% endif %}
+        
+        <div class="action-buttons">
+            <a href="{% url 'student_exams' %}" class="btn btn-secondary">Back to Exams</a>
+            <a href="{% url 'start_exam' exam.id %}" class="btn btn-primary">Start Exam</a>
+        </div>
+    </div>
+</div>
+{% endblock %} 

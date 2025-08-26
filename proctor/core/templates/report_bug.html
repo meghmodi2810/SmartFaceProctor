@@ -1,0 +1,176 @@
+{% extends 'student_base.html' %}
+
+{% block title %}Report Bug - Proctoring System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    
+    .report-header {
+        text-align: center;
+        margin-bottom: 3rem;
+        color: #2d3e50;
+    }
+    
+    .report-header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, #2d3e50 0%, #4f8cff 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .report-form {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(44, 62, 80, 0.1);
+        border: 1px solid #e0e7ff;
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-label {
+        display: block;
+        font-weight: 600;
+        color: #2d3e50;
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+    }
+    
+    .form-input,
+    .form-textarea,
+    .form-select {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #e0e7ff;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.3s ease;
+        background: #f8fafc;
+    }
+    
+    .form-input:focus,
+    .form-textarea:focus,
+    .form-select:focus {
+        outline: none;
+        border-color: #4f8cff;
+        background: white;
+    }
+    
+    .form-textarea {
+        min-height: 120px;
+        resize: vertical;
+    }
+    
+    .form-actions {
+        text-align: center;
+        margin-top: 2rem;
+    }
+    
+    .submit-btn {
+        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+    }
+    
+    .submit-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(79, 140, 255, 0.4);
+    }
+    
+    .priority-high {
+        color: #ef4444;
+    }
+    
+    .priority-medium {
+        color: #f59e0b;
+    }
+    
+    .priority-low {
+        color: #10b981;
+    }
+    
+    @media (max-width: 768px) {
+        .report-container {
+            padding: 1rem;
+        }
+        
+        .report-header h1 {
+            font-size: 2rem;
+        }
+        
+        .report-form {
+            padding: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-container">
+    <div class="report-header">
+        <h1>Report Bug</h1>
+        <p>Help us improve by reporting any issues you encounter</p>
+    </div>
+    
+    <div class="report-form">
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="bug_type" class="form-label">Bug Type</label>
+                <select id="bug_type" name="bug_type" class="form-select" required>
+                    <option value="">Select bug type</option>
+                    <option value="technical">Technical Issue</option>
+                    <option value="ui_ux">UI/UX Problem</option>
+                    <option value="performance">Performance Issue</option>
+                    <option value="security">Security Concern</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="priority" class="form-label">Priority</label>
+                <select id="priority" name="priority" class="form-select" required>
+                    <option value="">Select priority</option>
+                    <option value="low" class="priority-low">Low</option>
+                    <option value="medium" class="priority-medium">Medium</option>
+                    <option value="high" class="priority-high">High</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="title" class="form-label">Bug Title</label>
+                <input type="text" id="title" name="title" class="form-input" placeholder="Brief description of the issue" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="description" class="form-label">Detailed Description</label>
+                <textarea id="description" name="description" class="form-textarea" placeholder="Please provide a detailed description of the bug, including steps to reproduce it..." required></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="browser" class="form-label">Browser (if applicable)</label>
+                <input type="text" id="browser" name="browser" class="form-input" placeholder="e.g., Chrome, Firefox, Safari">
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="submit-btn">Submit Report</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %} 

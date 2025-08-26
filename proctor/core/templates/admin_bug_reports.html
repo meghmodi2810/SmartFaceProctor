@@ -1,0 +1,411 @@
+{% extends 'admin_base.html' %}
+
+{% block title %}Bug Reports Management - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-bug me-2"></i>Bug Reports Management</h2>
+    <div class="btn-group">
+        <button class="btn btn-outline-primary" onclick="exportBugReports()">
+            <i class="fas fa-download me-2"></i>Export Data
+        </button>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5>Open Reports</h5>
+                        <h3>{{ open_reports }}</h3>
+                    </div>
+                    <i class="fas fa-exclamation-circle fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5>In Progress</h5>
+                        <h3>{{ in_progress_reports }}</h3>
+                    </div>
+                    <i class="fas fa-cog fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5>Resolved</h5>
+                        <h3>{{ resolved_reports }}</h3>
+                    </div>
+                    <i class="fas fa-check-circle fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5>Total Reports</h5>
+                        <h3>{{ total_reports }}</h3>
+                    </div>
+                    <i class="fas fa-bug fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter and Search -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-2">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All Status</option>
+                    <option value="open" {% if request.GET.status == 'open' %}selected{% endif %}>Open</option>
+                    <option value="in_progress" {% if request.GET.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                    <option value="resolved" {% if request.GET.status == 'resolved' %}selected{% endif %}>Resolved</option>
+                    <option value="closed" {% if request.GET.status == 'closed' %}selected{% endif %}>Closed</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Priority</label>
+                <select name="priority" class="form-select">
+                    <option value="">All Priorities</option>
+                    <option value="low" {% if request.GET.priority == 'low' %}selected{% endif %}>Low</option>
+                    <option value="medium" {% if request.GET.priority == 'medium' %}selected{% endif %}>Medium</option>
+                    <option value="high" {% if request.GET.priority == 'high' %}selected{% endif %}>High</option>
+                    <option value="critical" {% if request.GET.priority == 'critical' %}selected{% endif %}>Critical</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Category</label>
+                <select name="category" class="form-select">
+                    <option value="">All Categories</option>
+                    <option value="ui" {% if request.GET.category == 'ui' %}selected{% endif %}>UI/UX</option>
+                    <option value="functionality" {% if request.GET.category == 'functionality' %}selected{% endif %}>Functionality</option>
+                    <option value="performance" {% if request.GET.category == 'performance' %}selected{% endif %}>Performance</option>
+                    <option value="security" {% if request.GET.category == 'security' %}selected{% endif %}>Security</option>
+                    <option value="other" {% if request.GET.category == 'other' %}selected{% endif %}>Other</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Search</label>
+                <input type="text" name="search" class="form-control" placeholder="Search by title or reporter" value="{{ request.GET.search }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fas fa-search me-2"></i>Filter
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Bug Reports Table -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Title</th>
+                        <th>Reporter</th>
+                        <th>Category</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bug in bugs %}
+                    <tr>
+                        <td>
+                            <strong>#{{ bug.id }}</strong>
+                        </td>
+                        <td>
+                            <div>
+                                <strong>{{ bug.title }}</strong>
+                            </div>
+                            {% if bug.description %}
+                                <small class="text-muted">{{ bug.description|truncatechars:60 }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div>{{ bug.reported_by.first_name }} {{ bug.reported_by.last_name }}</div>
+                            <small class="text-muted">{{ bug.reported_by.username }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-{% if bug.category == 'security' %}danger{% elif bug.category == 'functionality' %}warning{% elif bug.category == 'performance' %}info{% else %}secondary{% endif %}">
+                                {{ bug.get_category_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-{% if bug.priority == 'critical' %}danger{% elif bug.priority == 'high' %}warning{% elif bug.priority == 'medium' %}info{% else %}secondary{% endif %}">
+                                {{ bug.get_priority_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-{% if bug.status == 'open' %}danger{% elif bug.status == 'in_progress' %}warning{% elif bug.status == 'resolved' %}success{% else %}secondary{% endif %}">
+                                {{ bug.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div>{{ bug.created_at|date:"M d, Y" }}</div>
+                            <small class="text-muted">{{ bug.created_at|time:"H:i" }}</small>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-info" onclick="viewBugReport({{ bug.id }})" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-outline-warning" onclick="updateStatus({{ bug.id }})" title="Update Status">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-outline-danger" onclick="deleteBugReport({{ bug.id }})" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">
+                            <i class="fas fa-bug fa-3x mb-3"></i>
+                            <p>No bug reports found matching your criteria.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if bugs.has_other_pages %}
+        <nav aria-label="Bug report pagination">
+            <ul class="pagination justify-content-center">
+                {% if bugs.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ bugs.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.priority %}&priority={{ request.GET.priority }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">Previous</a>
+                    </li>
+                {% endif %}
+                
+                {% for num in bugs.paginator.page_range %}
+                    {% if bugs.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% elif num > bugs.number|add:'-3' and num < bugs.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.priority %}&priority={{ request.GET.priority }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if bugs.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ bugs.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.priority %}&priority={{ request.GET.priority }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">Next</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Bug Report Detail Modal -->
+<div class="modal fade" id="bugReportModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Bug Report Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="bugReportDetails">
+                <!-- Content will be loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Update Status Modal -->
+<div class="modal fade" id="updateStatusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Update Bug Report Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="updateStatusForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-select" required>
+                            <option value="open">Open</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="resolved">Resolved</option>
+                            <option value="closed">Closed</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Priority</label>
+                        <select name="priority" class="form-select" required>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Admin Notes</label>
+                        <textarea name="admin_notes" class="form-control" rows="3" placeholder="Add notes about the resolution or progress..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Status</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentBugId = null;
+
+function viewBugReport(bugId) {
+    fetch(`/customadmin/bug-reports/${bugId}/detail/`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('bugReportDetails').innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Report Information</h6>
+                        <p><strong>ID:</strong> #${data.id}</p>
+                        <p><strong>Title:</strong> ${data.title}</p>
+                        <p><strong>Category:</strong> ${data.category}</p>
+                        <p><strong>Priority:</strong> ${data.priority}</p>
+                        <p><strong>Status:</strong> ${data.status}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Reporter Information</h6>
+                        <p><strong>Name:</strong> ${data.reporter_name}</p>
+                        <p><strong>Username:</strong> ${data.reporter_username}</p>
+                        <p><strong>Email:</strong> ${data.reporter_email}</p>
+                        <p><strong>Reported:</strong> ${data.created_at}</p>
+                    </div>
+                </div>
+                <hr>
+                <div class="mb-3">
+                    <h6>Description</h6>
+                    <p>${data.description || 'No description provided'}</p>
+                </div>
+                <div class="mb-3">
+                    <h6>Steps to Reproduce</h6>
+                    <p>${data.steps_to_reproduce || 'No steps provided'}</p>
+                </div>
+                <div class="mb-3">
+                    <h6>Expected Behavior</h6>
+                    <p>${data.expected_behavior || 'Not specified'}</p>
+                </div>
+                <div class="mb-3">
+                    <h6>Actual Behavior</h6>
+                    <p>${data.actual_behavior || 'Not specified'}</p>
+                </div>
+                ${data.admin_notes ? `
+                <div class="mb-3">
+                    <h6>Admin Notes</h6>
+                    <p class="bg-light p-3 rounded">${data.admin_notes}</p>
+                </div>
+                ` : ''}
+            `;
+            
+            const modal = new bootstrap.Modal(document.getElementById('bugReportModal'));
+            modal.show();
+        })
+        .catch(error => {
+            alert('Error loading bug report details. Please try again.');
+        });
+}
+
+function updateStatus(bugId) {
+    currentBugId = bugId;
+    const modal = new bootstrap.Modal(document.getElementById('updateStatusModal'));
+    modal.show();
+}
+
+document.getElementById('updateStatusForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch(`/customadmin/bug-reports/${currentBugId}/update/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+        },
+        body: formData
+    })
+    .then(response => {
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('Error updating bug report. Please try again.');
+        }
+    })
+    .catch(error => {
+        alert('Error updating bug report. Please try again.');
+    });
+});
+
+function deleteBugReport(bugId) {
+    if (confirm('Are you sure you want to delete this bug report? This action cannot be undone.')) {
+        fetch(`/customadmin/bug-reports/${bugId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Error deleting bug report. Please try again.');
+            }
+        })
+        .catch(error => {
+            alert('Error deleting bug report. Please try again.');
+        });
+    }
+}
+
+function exportBugReports() {
+    const params = new URLSearchParams(window.location.search);
+    window.open(`/customadmin/bug-reports/export/?${params.toString()}`, '_blank');
+}
+</script>
+{% endblock %}

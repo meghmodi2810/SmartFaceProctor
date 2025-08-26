@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Faculty Dashboard - Proctoring System{% endblock %}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background: linear-gradient(135deg, #e0e7ff 0%, #f4f6fb 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .navbar {
+            background: linear-gradient(90deg, #2d3e50 60%, #4f8cff 100%);
+            color: #fff;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 16px rgba(44,62,80,0.10);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .navbar .logo {
+            font-size: 1.7rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-shadow: 1px 2px 8px #1a2533a0;
+        }
+        .navbar ul {
+            list-style: none;
+            display: flex;
+            gap: 2rem;
+            margin: 0;
+            padding: 0;
+        }
+        .navbar ul li {
+            display: inline;
+        }
+        .navbar ul li a {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s, transform 0.2s;
+            padding: 0.3rem 0.8rem;
+            border-radius: 5px;
+        }
+        .navbar ul li a:hover {
+            color: #ffd700;
+            background: rgba(255,255,255,0.08);
+            transform: translateY(-2px) scale(1.08);
+        }
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+        }
+        
+        /* Mobile Navigation */
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 1rem;
+            }
+            
+            .navbar .logo {
+                font-size: 1.4rem;
+            }
+            
+            .mobile-menu-toggle {
+                display: block;
+            }
+            
+            .navbar ul {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: linear-gradient(90deg, #2d3e50 60%, #4f8cff 100%);
+                flex-direction: column;
+                gap: 0;
+                box-shadow: 0 4px 16px rgba(44,62,80,0.10);
+                z-index: 1000;
+            }
+            
+            .navbar ul.active {
+                display: flex;
+            }
+            
+            .navbar ul li {
+                width: 100%;
+            }
+            
+            .navbar ul li a {
+                display: block;
+                padding: 1rem 2rem;
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+                border-radius: 0;
+            }
+            
+            .navbar ul li a:hover {
+                transform: none;
+                background: rgba(255,255,255,0.1);
+            }
+            
+            .main-content {
+                padding: 1rem;
+            }
+        }
+        .footer {
+            width: 100%;
+            background: linear-gradient(90deg, #2d3e50 60%, #4f8cff 100%);
+            color: #fff;
+            text-align: center;
+            padding: 0.5em 0 0.5em 0;
+            font-size: 1rem;
+            letter-spacing: 0.5px;
+            margin-top: auto;
+            box-shadow: 0 -2px 12px rgba(44,62,80,0.10);
+        }
+        .footer span {
+            color: #ffd700;
+            font-weight: 500;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">Smart Face Proctor</div>
+        <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
+        <ul id="mobile-menu">
+            <li><a href="{% url 'faculty_dashboard' %}">Dashboard</a></li>
+            <li><a href="{% url 'faculty_exams' %}">My Exams</a></li>
+            <li><a href="{% url 'faculty_profile' %}">Profile</a></li>
+            <li><a href="{% url 'report_bug' %}">Report Bug</a></li>
+            <li><a href="{% url 'logout' %}">Logout</a></li>
+        </ul>
+    </nav>
+    
+    <div class="main-content">
+        {% block content %}{% endblock %}
+    </div>
+    
+    <footer class="footer">
+        &copy; 2025 <span>Proctoring System</span> | Designed for Faculty Excellence
+    </footer>
+    
+    <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('active');
+        }
+        
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('mobile-menu');
+            const toggle = document.querySelector('.mobile-menu-toggle');
+            
+            if (!menu.contains(event.target) && !toggle.contains(event.target)) {
+                menu.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html> 

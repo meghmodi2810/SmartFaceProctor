@@ -1,0 +1,399 @@
+{% extends 'student_base.html' %}
+
+{% block title %}My Exams - Proctoring System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .exams-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    
+    .page-header {
+        text-align: center;
+        margin-bottom: 3rem;
+        color: #2d3e50;
+    }
+    
+    .page-header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, #2d3e50 0%, #4f8cff 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .page-header p {
+        font-size: 1.1rem;
+        color: #6b7280;
+        margin: 0;
+    }
+    
+    .exam-filters {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
+    
+    .filter-btn {
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+        border: 2px solid #e0e7ff;
+        color: #4f8cff;
+        padding: 0.75rem 1.5rem;
+        border-radius: 25px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        font-size: 0.95rem;
+    }
+    
+    .filter-btn.active,
+    .filter-btn:hover {
+        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
+        color: white;
+        border-color: #4f8cff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(79, 140, 255, 0.3);
+    }
+    
+    .exams-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 2rem;
+        margin-top: 2rem;
+    }
+    
+    .exam-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(44, 62, 80, 0.1);
+        transition: all 0.3s ease;
+        border: 1px solid #e0e7ff;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .exam-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #4f8cff 0%, #2d3e50 100%);
+    }
+    
+    .exam-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 40px rgba(44, 62, 80, 0.15);
+    }
+    
+    .exam-status {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .status-upcoming {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: white;
+    }
+    
+    .status-ongoing {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+    
+    .status-completed {
+        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+        color: white;
+    }
+    
+    .status-expired {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+    
+    .exam-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #2d3e50;
+        margin-bottom: 1rem;
+        line-height: 1.3;
+    }
+    
+    .exam-details {
+        margin-bottom: 1.5rem;
+    }
+    
+    .exam-detail {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.75rem;
+        color: #6b7280;
+        font-size: 0.95rem;
+    }
+    
+    .exam-detail i {
+        width: 20px;
+        margin-right: 0.75rem;
+        color: #4f8cff;
+    }
+    
+    .exam-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+    
+    .action-btn {
+        flex: 1;
+        padding: 0.75rem 1rem;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        text-align: center;
+        display: inline-block;
+        font-size: 0.9rem;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(79, 140, 255, 0.4);
+    }
+    
+    .btn-secondary {
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+        color: #4f8cff;
+        border: 2px solid #e0e7ff;
+    }
+    
+    .btn-secondary:hover {
+        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        transform: translateY(-2px);
+    }
+    
+    .btn-disabled {
+        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        color: #9ca3af;
+        cursor: not-allowed;
+    }
+    
+    .no-exams {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #6b7280;
+    }
+    
+    .no-exams i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+    
+    .no-exams h3 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+        color: #2d3e50;
+    }
+    
+    @media (max-width: 768px) {
+        .exams-container {
+            padding: 1rem;
+        }
+        
+        .page-header h1 {
+            font-size: 2rem;
+        }
+        
+        .page-header p {
+            font-size: 1rem;
+        }
+        
+        .exam-filters {
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .filter-btn {
+            width: 100%;
+            max-width: 250px;
+        }
+        
+        .exams-grid {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+        
+        .exam-card {
+            padding: 1.5rem;
+        }
+        
+        .exam-actions {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .action-btn {
+            width: 100%;
+            text-align: center;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .exams-container {
+            padding: 0.5rem;
+        }
+        
+        .page-header h1 {
+            font-size: 1.8rem;
+        }
+        
+        .exam-card {
+            padding: 1rem;
+        }
+        
+        .exam-status {
+            position: static;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .exam-title {
+            font-size: 1.2rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="exams-container">
+    <div class="page-header">
+        <h1>My Exams</h1>
+        <p>View and manage all your scheduled examinations</p>
+    </div>
+    
+    <div class="exam-filters">
+        <button class="filter-btn active" data-filter="all">All Exams</button>
+        <button class="filter-btn" data-filter="upcoming">Upcoming</button>
+        <button class="filter-btn" data-filter="ongoing">Ongoing</button>
+        <button class="filter-btn" data-filter="completed">Completed</button>
+    </div>
+    
+    <div class="exams-grid">
+        {% for exam in exams %}
+        <div class="exam-card" data-status="{{ exam.status }}">
+            <div class="exam-status status-{{ exam.status }}">
+                {{ exam.status|title }}
+            </div>
+            
+            <h3 class="exam-title">{{ exam.title }}</h3>
+            
+            <div class="exam-details">
+                <div class="exam-detail">
+                    <i>📅</i>
+                    <span>{{ exam.date|date:"F d, Y" }}</span>
+                </div>
+                <div class="exam-detail">
+                    <i>⏰</i>
+                    <span>{{ exam.start_time|time:"H:i" }} - {{ exam.end_time|time:"H:i" }}</span>
+                </div>
+                <div class="exam-detail">
+                    <i>⏱️</i>
+                    <span>Duration: {{ exam.duration }} minutes</span>
+                </div>
+                <div class="exam-detail">
+                    <i>📝</i>
+                    <span>{{ exam.subject }}</span>
+                </div>
+                {% if exam.instructions %}
+                <div class="exam-detail">
+                    <i>📋</i>
+                    <span>{{ exam.instructions|truncatewords:10 }}</span>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="exam-actions">
+                {% if exam.status == 'upcoming' %}
+                    <a href="{% url 'exam_instructions' exam.id %}" class="action-btn btn-secondary">Instructions</a>
+                    <a href="{% url 'mcq_exam' exam.id %}" class="action-btn btn-primary">Start Exam</a>
+                {% elif exam.status == 'ongoing' %}
+                    <a href="{% url 'mcq_exam' exam.id %}" class="action-btn btn-primary">Continue Exam</a>
+                {% elif exam.status == 'completed' %}
+                    <a href="{% url 'exam_results' exam.id %}" class="action-btn btn-primary">View Results</a>
+                    <a href="{% url 'exam_review' exam.id %}" class="action-btn btn-secondary">Review</a>
+                {% else %}
+                    <button class="action-btn btn-disabled" disabled>Expired</button>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="no-exams">
+            <i>📚</i>
+            <h3>No Exams Found</h3>
+            <p>You don't have any exams scheduled at the moment.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const examCards = document.querySelectorAll('.exam-card');
+    
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Remove active class from all buttons
+            filterBtns.forEach(b => b.classList.remove('active'));
+            // Add active class to clicked button
+            this.classList.add('active');
+            
+            const filter = this.getAttribute('data-filter');
+            
+            examCards.forEach(card => {
+                const status = card.getAttribute('data-status');
+                
+                if (filter === 'all' || status === filter) {
+                    card.style.display = 'block';
+                    card.style.animation = 'fadeIn 0.5s ease';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    });
+});
+
+// Add fadeIn animation
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %} 

@@ -1,0 +1,194 @@
+{% extends 'faculty_base.html' %}
+
+{% block title %}Faculty Exams - Proctoring System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .exams-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .exams-header-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(44, 62, 80, 0.1);
+        border: 1px solid #e0e7ff;
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .exams-header-card h3 {
+        color: #2d3e50;
+        margin: 0;
+        font-size: 1.8rem;
+    }
+    
+    .create-exam-btn {
+        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        font-size: 1rem;
+    }
+    
+    .create-exam-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(79, 140, 255, 0.4);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .exams-list-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(44, 62, 80, 0.1);
+        border: 1px solid #e0e7ff;
+    }
+    
+    .exams-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .exam-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid #e0e7ff;
+        transition: background-color 0.2s ease;
+    }
+    
+    .exam-item:last-child {
+        border-bottom: none;
+    }
+    
+    .exam-item:hover {
+        background-color: #f8fafc;
+    }
+    
+    .exam-info {
+        flex: 1;
+    }
+    
+    .exam-title {
+        font-weight: 600;
+        color: #2d3e50;
+        margin-bottom: 0.25rem;
+    }
+    
+    .exam-date {
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
+    
+    .delete-btn {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.9rem;
+    }
+    
+    .delete-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: #6b7280;
+    }
+    
+    .alert {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-left: 4px solid #4f8cff;
+    }
+    
+    .btn-close {
+        float: right;
+        background: none;
+        border: none;
+        font-size: 1.2rem;
+        cursor: pointer;
+        color: #6b7280;
+    }
+    
+    .btn-close:hover {
+        color: #2d3e50;
+    }
+    
+    @media (max-width: 768px) {
+        .exams-header-card {
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+        }
+        
+        .exam-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        
+        .create-exam-btn {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="exams-container">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message|linebreaks }}
+                <button type="button" class="btn-close" onclick="this.parentElement.style.display='none'">&times;</button>
+            </div>
+        {% endfor %}
+    {% endif %}
+    
+    <div class="exams-header-card">
+        <h3>📚 Your Exams</h3>
+        <a href="{% url 'schedule_exam_page' %}" class="create-exam-btn">+ Create Exam</a>
+    </div>
+    
+    <div class="exams-list-card">
+        <ul class="exams-list">
+            {% for exam in exams_created %}
+                <li class="exam-item">
+                    <div class="exam-info">
+                        <div class="exam-title">{{ exam.title }}</div>
+                        <div class="exam-date">{{ exam.date|date:"M d, Y - H:i A" }}</div>
+                    </div>
+                    <form method="post" action="{% url 'delete_exam' exam.id %}" onsubmit="return confirm('Are you sure you want to delete this exam?');">
+                        {% csrf_token %}
+                        <button type="submit" class="delete-btn">Delete</button>
+                    </form>
+                </li>
+            {% empty %}
+                <li class="empty-state">You haven't created any exams yet.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %} 

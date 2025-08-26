@@ -1,0 +1,166 @@
+{% extends 'faculty_base.html' %}
+
+{% block title %}Faculty Profile - Proctoring System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profile-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    
+    .profile-header {
+        text-align: center;
+        margin-bottom: 3rem;
+        color: #2d3e50;
+    }
+    
+    .profile-header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, #2d3e50 0%, #4f8cff 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .profile-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(44, 62, 80, 0.1);
+        border: 1px solid #e0e7ff;
+    }
+    
+    .profile-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .info-item {
+        padding: 1rem;
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+        border-radius: 8px;
+        border-left: 4px solid #4f8cff;
+    }
+    
+    .info-label {
+        font-weight: 600;
+        color: #2d3e50;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .info-value {
+        color: #4f8cff;
+        font-size: 1.1rem;
+        font-weight: 500;
+    }
+    
+    .profile-actions {
+        text-align: center;
+        margin-top: 2rem;
+    }
+    
+    .action-btn {
+        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+        margin: 0 0.5rem;
+    }
+    
+    .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(79, 140, 255, 0.4);
+    }
+    
+    .btn-secondary {
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+        color: #4f8cff;
+        border: 2px solid #e0e7ff;
+    }
+    
+    .btn-secondary:hover {
+        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+    }
+    
+    @media (max-width: 768px) {
+        .profile-container {
+            padding: 1rem;
+        }
+        
+        .profile-header h1 {
+            font-size: 2rem;
+        }
+        
+        .profile-info {
+            grid-template-columns: 1fr;
+        }
+        
+        .profile-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .action-btn {
+            margin: 0;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <div class="profile-header">
+        <h1>Faculty Profile</h1>
+        <p>Manage your personal information and account settings</p>
+    </div>
+    
+    <div class="profile-card">
+        <div class="profile-info">
+            <div class="info-item">
+                <div class="info-label">Faculty ID</div>
+                <div class="info-value">{{ faculty.username }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Full Name</div>
+                <div class="info-value">{{ faculty.first_name }} {{ faculty.last_name }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Email</div>
+                <div class="info-value">{{ faculty.email }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Role</div>
+                <div class="info-value">{{ faculty.role }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Date Joined</div>
+                <div class="info-value">{{ faculty.date_joined|date:"F d, Y" }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Last Login</div>
+                <div class="info-value">{{ faculty.last_login|date:"F d, Y H:i"|default:"Never" }}</div>
+            </div>
+        </div>
+        
+        <div class="profile-actions">
+            <a href="#" class="action-btn">Edit Profile</a>
+            <a href="#" class="action-btn btn-secondary">Change Password</a>
+        </div>
+    </div>
+</div>
+{% endblock %} 

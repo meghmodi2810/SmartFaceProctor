@@ -1,0 +1,550 @@
+{% extends 'admin_base.html' %}
+
+{% block title %}System Settings - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-cog me-2"></i>System Settings</h2>
+    <button class="btn btn-success" onclick="saveAllSettings()">
+        <i class="fas fa-save me-2"></i>Save All Changes
+    </button>
+</div>
+
+<!-- Settings Tabs -->
+<ul class="nav nav-tabs mb-4" id="settingsTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">
+            <i class="fas fa-cog me-2"></i>General
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="proctoring-tab" data-bs-toggle="tab" data-bs-target="#proctoring" type="button" role="tab">
+            <i class="fas fa-eye me-2"></i>Proctoring
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="email-tab" data-bs-toggle="tab" data-bs-target="#email" type="button" role="tab">
+            <i class="fas fa-envelope me-2"></i>Email
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#security" type="button" role="tab">
+            <i class="fas fa-shield-alt me-2"></i>Security
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="maintenance-tab" data-bs-toggle="tab" data-bs-target="#maintenance" type="button" role="tab">
+            <i class="fas fa-tools me-2"></i>Maintenance
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="settingsTabContent">
+    <!-- General Settings -->
+    <div class="tab-pane fade show active" id="general" role="tabpanel">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-cog me-2"></i>General System Settings</h5>
+            </div>
+            <div class="card-body">
+                <form id="generalSettingsForm">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">System Name</label>
+                                <input type="text" name="system_name" class="form-control" value="Smart Face Proctor">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">System Version</label>
+                                <input type="text" name="system_version" class="form-control" value="1.0.0" readonly>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Default Exam Duration (minutes)</label>
+                                <input type="number" name="default_exam_duration" class="form-control" value="60" min="1">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Max Questions per Exam</label>
+                                <input type="number" name="max_questions_per_exam" class="form-control" value="100" min="1">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Time Zone</label>
+                                <select name="timezone" class="form-select">
+                                    <option value="Asia/Kolkata" selected>Asia/Kolkata (IST)</option>
+                                    <option value="UTC">UTC</option>
+                                    <option value="America/New_York">America/New_York (EST)</option>
+                                    <option value="Europe/London">Europe/London (GMT)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Date Format</label>
+                                <select name="date_format" class="form-select">
+                                    <option value="DD/MM/YYYY" selected>DD/MM/YYYY</option>
+                                    <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                                    <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="checkbox" name="allow_registration" class="form-check-input" id="allowRegistration" checked>
+                            <label class="form-check-label" for="allowRegistration">
+                                Allow new user registration
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Proctoring Settings -->
+    <div class="tab-pane fade" id="proctoring" role="tabpanel">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-eye me-2"></i>Proctoring Configuration</h5>
+            </div>
+            <div class="card-body">
+                <form id="proctoringSettingsForm">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Face Detection Sensitivity</label>
+                                <select name="face_detection_sensitivity" class="form-select">
+                                    <option value="low">Low</option>
+                                    <option value="medium" selected>Medium</option>
+                                    <option value="high">High</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Violation Threshold</label>
+                                <input type="number" name="violation_threshold" class="form-control" value="5" min="1" max="20">
+                                <small class="text-muted">Number of violations before flagging</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Recording Quality</label>
+                                <select name="recording_quality" class="form-select">
+                                    <option value="480p">480p (Standard)</option>
+                                    <option value="720p" selected>720p (HD)</option>
+                                    <option value="1080p">1080p (Full HD)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Frame Rate (FPS)</label>
+                                <select name="frame_rate" class="form-select">
+                                    <option value="15">15 FPS</option>
+                                    <option value="24" selected>24 FPS</option>
+                                    <option value="30">30 FPS</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Enabled Detection Features</label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="checkbox" name="detect_face_absence" class="form-check-input" id="detectFaceAbsence" checked>
+                                    <label class="form-check-label" for="detectFaceAbsence">Face Absence Detection</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" name="detect_multiple_faces" class="form-check-input" id="detectMultipleFaces" checked>
+                                    <label class="form-check-label" for="detectMultipleFaces">Multiple Faces Detection</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="checkbox" name="detect_gaze_tracking" class="form-check-input" id="detectGazeTracking" checked>
+                                    <label class="form-check-label" for="detectGazeTracking">Gaze Tracking</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" name="detect_head_pose" class="form-check-input" id="detectHeadPose" checked>
+                                    <label class="form-check-label" for="detectHeadPose">Head Pose Detection</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Email Settings -->
+    <div class="tab-pane fade" id="email" role="tabpanel">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-envelope me-2"></i>Email Configuration</h5>
+            </div>
+            <div class="card-body">
+                <form id="emailSettingsForm">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">SMTP Server</label>
+                                <input type="text" name="smtp_server" class="form-control" value="smtp.gmail.com">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">SMTP Port</label>
+                                <input type="number" name="smtp_port" class="form-control" value="587">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Email Username</label>
+                                <input type="email" name="email_username" class="form-control" placeholder="your-email@gmail.com">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Email Password</label>
+                                <input type="password" name="email_password" class="form-control" placeholder="App Password">
+                                <small class="text-muted">Use App Password for Gmail</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">From Name</label>
+                                <input type="text" name="from_name" class="form-control" value="Smart Face Proctor">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Reply-To Email</label>
+                                <input type="email" name="reply_to_email" class="form-control" placeholder="noreply@example.com">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="checkbox" name="use_tls" class="form-check-input" id="useTLS" checked>
+                            <label class="form-check-label" for="useTLS">Use TLS Encryption</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-outline-primary" onclick="testEmailConnection()">
+                            <i class="fas fa-paper-plane me-2"></i>Test Email Connection
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Settings -->
+    <div class="tab-pane fade" id="security" role="tabpanel">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-shield-alt me-2"></i>Security Configuration</h5>
+            </div>
+            <div class="card-body">
+                <form id="securitySettingsForm">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Session Timeout (minutes)</label>
+                                <input type="number" name="session_timeout" class="form-control" value="30" min="5" max="480">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Password Reset OTP Expiry (minutes)</label>
+                                <input type="number" name="otp_expiry" class="form-control" value="10" min="1" max="60">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Max Login Attempts</label>
+                                <input type="number" name="max_login_attempts" class="form-control" value="5" min="3" max="10">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Account Lockout Duration (minutes)</label>
+                                <input type="number" name="lockout_duration" class="form-control" value="15" min="5" max="120">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password Requirements</label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="checkbox" name="require_uppercase" class="form-check-input" id="requireUppercase" checked>
+                                    <label class="form-check-label" for="requireUppercase">Require Uppercase Letters</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" name="require_lowercase" class="form-check-input" id="requireLowercase" checked>
+                                    <label class="form-check-label" for="requireLowercase">Require Lowercase Letters</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="checkbox" name="require_numbers" class="form-check-input" id="requireNumbers" checked>
+                                    <label class="form-check-label" for="requireNumbers">Require Numbers</label>
+                                </div>
+                                <div class="form-check">
+                                    <input type="checkbox" name="require_special_chars" class="form-check-input" id="requireSpecialChars">
+                                    <label class="form-check-label" for="requireSpecialChars">Require Special Characters</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Minimum Password Length</label>
+                                <input type="number" name="min_password_length" class="form-control" value="8" min="6" max="20">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Maintenance Settings -->
+    <div class="tab-pane fade" id="maintenance" role="tabpanel">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-tools me-2"></i>System Maintenance</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card border-warning">
+                            <div class="card-body">
+                                <h6><i class="fas fa-database me-2"></i>Database Maintenance</h6>
+                                <p class="text-muted">Clean up old records and optimize database performance.</p>
+                                <button class="btn btn-warning" onclick="cleanupDatabase()">
+                                    <i class="fas fa-broom me-2"></i>Cleanup Database
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-info">
+                            <div class="card-body">
+                                <h6><i class="fas fa-file-archive me-2"></i>Backup System</h6>
+                                <p class="text-muted">Create a backup of the entire system data.</p>
+                                <button class="btn btn-info" onclick="createBackup()">
+                                    <i class="fas fa-download me-2"></i>Create Backup
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <div class="card border-danger">
+                            <div class="card-body">
+                                <h6><i class="fas fa-exclamation-triangle me-2"></i>System Reset</h6>
+                                <p class="text-muted">Reset system to default settings (irreversible).</p>
+                                <button class="btn btn-danger" onclick="resetSystem()">
+                                    <i class="fas fa-undo me-2"></i>Reset System
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-success">
+                            <div class="card-body">
+                                <h6><i class="fas fa-chart-line me-2"></i>System Health</h6>
+                                <p class="text-muted">Check system health and performance metrics.</p>
+                                <button class="btn btn-success" onclick="checkSystemHealth()">
+                                    <i class="fas fa-heartbeat me-2"></i>Check Health
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function saveAllSettings() {
+    const forms = ['generalSettingsForm', 'proctoringSettingsForm', 'emailSettingsForm', 'securitySettingsForm'];
+    const allData = {};
+    
+    forms.forEach(formId => {
+        const form = document.getElementById(formId);
+        if (form) {
+            const formData = new FormData(form);
+            for (let [key, value] of formData.entries()) {
+                allData[key] = value;
+            }
+        }
+    });
+    
+    fetch('/customadmin/settings/save/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(allData)
+    })
+    .then(response => {
+        if (response.ok) {
+            alert('Settings saved successfully!');
+        } else {
+            alert('Error saving settings. Please try again.');
+        }
+    })
+    .catch(error => {
+        alert('Error saving settings. Please try again.');
+    });
+}
+
+function testEmailConnection() {
+    const form = document.getElementById('emailSettingsForm');
+    const formData = new FormData(form);
+    
+    fetch('/customadmin/settings/test-email/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Email connection test successful!');
+        } else {
+            alert('Email connection test failed: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error testing email connection. Please try again.');
+    });
+}
+
+function cleanupDatabase() {
+    if (confirm('This will remove old records and optimize the database. Continue?')) {
+        fetch('/customadmin/maintenance/cleanup/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+        })
+        .catch(error => {
+            alert('Error during database cleanup. Please try again.');
+        });
+    }
+}
+
+function createBackup() {
+    if (confirm('This will create a backup of all system data. Continue?')) {
+        fetch('/customadmin/maintenance/backup/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            },
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.blob();
+            }
+            throw new Error('Backup failed');
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `system_backup_${new Date().toISOString().split('T')[0]}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        })
+        .catch(error => {
+            alert('Error creating backup. Please try again.');
+        });
+    }
+}
+
+function resetSystem() {
+    const confirmation = prompt('Type "RESET" to confirm system reset (this is irreversible):');
+    if (confirmation === 'RESET') {
+        fetch('/customadmin/maintenance/reset/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) {
+                window.location.href = '/customadmin/login/';
+            }
+        })
+        .catch(error => {
+            alert('Error during system reset. Please try again.');
+        });
+    }
+}
+
+function checkSystemHealth() {
+    fetch('/customadmin/maintenance/health/', {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        let healthReport = 'System Health Report:\n\n';
+        healthReport += `Database Status: ${data.database_status}\n`;
+        healthReport += `Email Service: ${data.email_status}\n`;
+        healthReport += `Storage Space: ${data.storage_status}\n`;
+        healthReport += `Active Users: ${data.active_users}\n`;
+        healthReport += `System Uptime: ${data.uptime}\n`;
+        alert(healthReport);
+    })
+    .catch(error => {
+        alert('Error checking system health. Please try again.');
+    });
+}
+</script>
+{% endblock %}

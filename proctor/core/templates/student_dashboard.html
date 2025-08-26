@@ -1,0 +1,109 @@
+{% extends 'student_base.html' %}
+
+{% block title %}Student Dashboard - Proctoring System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 2.5rem 2rem 2rem 2rem;
+        background: rgba(255,255,255,0.95);
+        border-radius: 18px;
+        box-shadow: 0 8px 32px rgba(44,62,80,0.13);
+        animation: fadeInDash 1.2s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes fadeInDash {
+        from { opacity: 0; transform: translateY(40px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .dashboard h2 {
+        margin-top: 0;
+    }
+    .panels {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 2.2rem;
+        margin-top: 2.2rem;
+    }
+    .panel {
+        background: linear-gradient(120deg, #f8fafc 70%, #e0e7ff 100%);
+        border-radius: 14px;
+        padding: 1.7rem 1.3rem 1.5rem 1.3rem;
+        box-shadow: 0 2px 12px rgba(44,62,80,0.07);
+        transition: box-shadow 0.3s, transform 0.3s;
+        position: relative;
+        overflow: hidden;
+        animation: fadeInPanel 1.1s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes fadeInPanel {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    .panel:hover {
+        box-shadow: 0 8px 32px rgba(44,62,80,0.18);
+        transform: translateY(-6px) scale(1.03);
+    }
+    .panel h3 {
+        margin-top: 0;
+        color: #2d3e50;
+        font-size: 1.25rem;
+        margin-bottom: 0.5rem;
+    }
+    .panel button {
+        background: linear-gradient(90deg, #4f8cff 60%, #2d3e50 100%);
+        color: #fff;
+        border: none;
+        padding: 0.6rem 1.5rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 1.05rem;
+        margin-top: 1.1rem;
+        font-weight: 500;
+        box-shadow: 0 2px 8px rgba(44,62,80,0.10);
+        transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+        outline: none;
+    }
+    .panel button:hover {
+        background: linear-gradient(90deg, #2d3e50 60%, #4f8cff 100%);
+        transform: scale(1.07) translateY(-2px);
+        box-shadow: 0 6px 18px rgba(44,62,80,0.18);
+    }
+    .btn-link {
+        text-decoration: none;
+        display: inline-block;
+    }
+    .btn-link button {
+        width: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <h2>Welcome, Student!</h2>
+    <div class="panels">
+        <div class="panel">
+            <h3>My Exams</h3>
+            <p>View your scheduled exams and details.</p>
+            <a href="{% url 'student_exams' %}" class="btn-link">
+                <button>View Exams</button>
+            </a>
+        </div>
+        <div class="panel">
+            <h3>Profile</h3>
+            <p>Update your personal and academic details.</p>
+            <a href="{% url 'student_profile' %}" class="btn-link">
+                <button>Edit Profile</button>
+            </a>
+        </div>
+        <div class="panel">
+            <h3>Report Bug</h3>
+            <p>Report any issues or bugs you encounter.</p>
+            <a href="{% url 'report_bug' %}" class="btn-link">
+                <button>Report Issue</button>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

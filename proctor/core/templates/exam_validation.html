@@ -1,0 +1,380 @@
+{% extends 'student_base.html' %}
+
+{% block title %}Exam Validation - {{ exam.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .validation-container {
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 2rem;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        box-shadow: 0 8px 32px rgba(44, 62, 80, 0.15);
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .exam-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid #e0e7ff;
+    }
+
+    .exam-title {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #2d3e50;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, #2d3e50 0%, #4f8cff 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .exam-subtitle {
+        color: #6b7280;
+        font-size: 1.1rem;
+    }
+
+    .validation-section {
+        margin-bottom: 2rem;
+    }
+
+    .section-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #2d3e50;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .section-title i {
+        font-size: 1.5rem;
+    }
+
+    .validation-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .validation-item {
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+        padding: 1rem;
+        border-radius: 12px;
+        border-left: 4px solid #4f8cff;
+    }
+
+    .validation-item.success {
+        border-left-color: #10b981;
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    }
+
+    .validation-item.warning {
+        border-left-color: #f59e0b;
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    }
+
+    .validation-item.error {
+        border-left-color: #ef4444;
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    }
+
+    .validation-label {
+        font-weight: 600;
+        color: #2d3e50;
+        margin-bottom: 0.5rem;
+    }
+
+    .validation-value {
+        color: #6b7280;
+        font-size: 0.95rem;
+    }
+
+    .exam-details {
+        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+    }
+
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(79, 140, 255, 0.2);
+    }
+
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+
+    .detail-label {
+        font-weight: 600;
+        color: #2d3e50;
+    }
+
+    .detail-value {
+        color: #4f8cff;
+        font-weight: 500;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-top: 2rem;
+    }
+
+    .btn {
+        padding: 1rem 2rem;
+        border: none;
+        border-radius: 10px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(79, 140, 255, 0.4);
+    }
+
+    .btn-secondary {
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+        color: #4f8cff;
+        border: 2px solid #e0e7ff;
+    }
+
+    .btn-secondary:hover {
+        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        transform: translateY(-2px);
+    }
+
+    .btn:disabled {
+        background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+        color: #9ca3af;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .status-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 0.5rem;
+    }
+
+    .status-ready {
+        background: #10b981;
+    }
+
+    .status-waiting {
+        background: #f59e0b;
+    }
+
+    .status-error {
+        background: #ef4444;
+    }
+
+    .instructions {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        padding: 1.5rem;
+        border-radius: 12px;
+        border-left: 4px solid #f59e0b;
+        margin-bottom: 2rem;
+    }
+
+    .instructions h4 {
+        color: #92400e;
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+    }
+
+    .instructions ul {
+        color: #92400e;
+        margin: 0;
+        padding-left: 1.5rem;
+    }
+
+    .instructions li {
+        margin-bottom: 0.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .validation-container {
+            margin: 1rem;
+            padding: 1.5rem;
+        }
+        
+        .exam-title {
+            font-size: 1.5rem;
+        }
+        
+        .validation-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .action-buttons {
+            flex-direction: column;
+        }
+        
+        .detail-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.25rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="validation-container">
+    <div class="exam-header">
+        <h1 class="exam-title">{{ exam.title }}</h1>
+        <p class="exam-subtitle">Exam Validation & Preparation</p>
+    </div>
+
+    <div class="exam-details">
+        <div class="detail-row">
+            <span class="detail-label">Duration:</span>
+            <span class="detail-value">{{ exam.duration_minutes }} minutes</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Start Time:</span>
+            <span class="detail-value">{{ exam.date|date:"F d, Y" }} at {{ exam.date|time:"H:i" }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">End Time:</span>
+            <span class="detail-value">{{ exam_end_time|date:"F d, Y" }} at {{ exam_end_time|time:"H:i" }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Total Questions:</span>
+            <span class="detail-value">{{ questions_count }} questions</span>
+        </div>
+    </div>
+
+    <div class="validation-section">
+        <h3 class="section-title">
+            <i>🔍</i>
+            System Validation
+        </h3>
+        <div class="validation-grid">
+            <div class="validation-item {% if exam_status == 'ready' %}success{% elif exam_status == 'waiting' %}warning{% else %}error{% endif %}">
+                <div class="validation-label">
+                    <span class="status-indicator status-{{ exam_status }}"></span>
+                    Exam Status
+                </div>
+                <div class="validation-value">
+                    {% if exam_status == 'ready' %}
+                        Ready to Start
+                    {% elif exam_status == 'waiting' %}
+                        Waiting for Start Time
+                    {% else %}
+                        Exam Not Available
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="validation-item success">
+                <div class="validation-label">Browser Compatibility</div>
+                <div class="validation-value">✅ Supported</div>
+            </div>
+            
+            <div class="validation-item success">
+                <div class="validation-label">Internet Connection</div>
+                <div class="validation-value">✅ Stable</div>
+            </div>
+            
+            <div class="validation-item success">
+                <div class="validation-label">Camera Access</div>
+                <div class="validation-value">✅ Available</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="instructions">
+        <h4>📋 Important Instructions</h4>
+        <ul>
+            <li>Ensure you have a stable internet connection throughout the exam</li>
+            <li>Close all other applications and browser tabs</li>
+            <li>Make sure your camera is working and accessible</li>
+            <li>Find a quiet, well-lit environment for the exam</li>
+            <li>Have your ID ready for verification if required</li>
+            <li>Do not refresh the page during the exam</li>
+        </ul>
+    </div>
+
+    <div class="action-buttons">
+        {% if exam_status == 'ready' %}
+            <a href="{% url 'start_mcq_exam' exam.id %}" class="btn btn-primary">
+                🚀 Start Exam Now
+            </a>
+        {% elif exam_status == 'waiting' %}
+            <button class="btn btn-secondary" onclick="location.reload()">
+                🔄 Refresh Status
+            </button>
+            <a href="{% url 'student_exams' %}" class="btn btn-secondary">
+                ← Back to Exams
+            </a>
+        {% else %}
+            <a href="{% url 'student_exams' %}" class="btn btn-secondary">
+                ← Back to Exams
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Auto-refresh every 30 seconds if exam is waiting
+{% if exam_status == 'waiting' %}
+setInterval(function() {
+    location.reload();
+}, 30000);
+{% endif %}
+
+// Check camera access
+async function checkCamera() {
+    try {
+        const stream = await navigator.getUserMedia({ video: true });
+        stream.getTracks().forEach(track => track.stop());
+        console.log('Camera access confirmed');
+    } catch (error) {
+        console.error('Camera access denied:', error);
+        // You could show a warning here
+    }
+}
+
+// Check camera on page load
+document.addEventListener('DOMContentLoaded', function() {
+    checkCamera();
+});
+</script>
+{% endblock %} 

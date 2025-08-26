@@ -1,0 +1,228 @@
+{% extends 'student_base.html' %}
+
+{% block title %}Exam Review - {{ exam.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .review-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    
+    .review-header {
+        text-align: center;
+        margin-bottom: 3rem;
+        color: #2d3e50;
+    }
+    
+    .review-header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, #2d3e50 0%, #4f8cff 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .review-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(44, 62, 80, 0.1);
+        border: 1px solid #e0e7ff;
+    }
+    
+    .exam-summary {
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        border-left: 4px solid #4f8cff;
+    }
+    
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+    }
+    
+    .summary-item {
+        text-align: center;
+    }
+    
+    .summary-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #4f8cff;
+        margin-bottom: 0.25rem;
+    }
+    
+    .summary-label {
+        font-size: 0.9rem;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .review-section {
+        margin-bottom: 2rem;
+    }
+    
+    .section-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #2d3e50;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e0e7ff;
+    }
+    
+    .feedback-item {
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background: #f8fafc;
+        border-radius: 8px;
+        border-left: 4px solid #10b981;
+    }
+    
+    .feedback-title {
+        font-weight: 600;
+        color: #2d3e50;
+        margin-bottom: 0.5rem;
+    }
+    
+    .feedback-content {
+        color: #6b7280;
+        line-height: 1.6;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-top: 2rem;
+    }
+    
+    .btn {
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(79, 140, 255, 0.4);
+    }
+    
+    .btn-secondary {
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+        color: #4f8cff;
+        border: 2px solid #e0e7ff;
+    }
+    
+    .btn-secondary:hover {
+        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        transform: translateY(-2px);
+    }
+    
+    @media (max-width: 768px) {
+        .review-container {
+            padding: 1rem;
+        }
+        
+        .review-header h1 {
+            font-size: 2rem;
+        }
+        
+        .summary-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .action-buttons {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="review-container">
+    <div class="review-header">
+        <h1>Exam Review</h1>
+        <p>Detailed review of your performance in {{ exam.title }}</p>
+    </div>
+    
+    <div class="review-card">
+        <div class="exam-summary">
+            <h3>Performance Summary</h3>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="summary-value">{{ submission.score }}%</div>
+                    <div class="summary-label">Score</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value">{{ exam.duration_minutes }}</div>
+                    <div class="summary-label">Duration (min)</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value">{{ submission.submitted_on|date:"M d" }}</div>
+                    <div class="summary-label">Date</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value">{{ submission.submitted_on|time:"H:i" }}</div>
+                    <div class="summary-label">Time</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="review-section">
+            <h3 class="section-title">Performance Analysis</h3>
+            <div class="feedback-item">
+                <div class="feedback-title">Overall Performance</div>
+                <div class="feedback-content">
+                    {% if submission.score >= 90 %}
+                        Excellent work! You demonstrated a strong understanding of the material.
+                    {% elif submission.score >= 80 %}
+                        Good performance! You showed solid knowledge of the subject matter.
+                    {% elif submission.score >= 70 %}
+                        Satisfactory performance. Consider reviewing areas for improvement.
+                    {% elif submission.score >= 60 %}
+                        Passing score. Focus on strengthening your understanding of key concepts.
+                    {% else %}
+                        Below passing threshold. Consider additional study and practice.
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="review-section">
+            <h3 class="section-title">Recommendations</h3>
+            <div class="feedback-item">
+                <div class="feedback-title">Study Suggestions</div>
+                <div class="feedback-content">
+                    <ul>
+                        <li>Review the exam questions you found challenging</li>
+                        <li>Focus on areas where you scored lower</li>
+                        <li>Practice with similar questions to improve understanding</li>
+                        <li>Consider seeking additional help if needed</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="action-buttons">
+            <a href="{% url 'student_exams' %}" class="btn btn-secondary">Back to Exams</a>
+            <a href="{% url 'exam_results' exam.id %}" class="btn btn-primary">View Results</a>
+        </div>
+    </div>
+</div>
+{% endblock %} 

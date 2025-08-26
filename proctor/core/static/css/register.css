@@ -1,0 +1,76 @@
+:root {
+  --primary: #4f46e5;
+  --primary-dark: #4338ca;
+  --bg-gradient: linear-gradient(135deg, #f5f7ff 0%, #ebefff 100%);
+}
+
+* {
+  font-family: "Inter", sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--bg-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.card {
+  border: none;
+  border-radius: 1rem;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.card-body {
+  padding: 2rem;
+}
+
+.brand {
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: -0.5px;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.25);
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-dark);
+  border-color: var(--primary-dark);
+}
+
+@media (min-width: 992px) {
+  .card {
+    flex-direction: row;
+  }
+
+  .card-body {
+    flex: 1 1 60%;
+    padding: 3rem;
+  }
+
+  .register-illustration {
+    flex: 1 1 40%;
+    background: url("https://images.unsplash.com/photo-1581078426770-6f7c8e8606e9?q=80&w=1200&auto=format&fit=crop") center/cover no-repeat;
+  }
+}
+
+@media (max-width: 991px) {
+  .register-illustration {
+    display: none;
+  }
+}

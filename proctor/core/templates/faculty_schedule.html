@@ -1,0 +1,246 @@
+{% extends 'faculty_base.html' %}
+
+{% block title %}Schedule Exam - Proctoring System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .schedule-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    
+    .schedule-header-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(44, 62, 80, 0.1);
+        border: 1px solid #e0e7ff;
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .schedule-header-card h3 {
+        color: #2d3e50;
+        margin: 0;
+        font-size: 1.8rem;
+    }
+    
+    .back-btn {
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+        color: #4f8cff;
+        border: 2px solid #e0e7ff;
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        font-size: 1rem;
+    }
+    
+    .back-btn:hover {
+        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        color: #4f8cff;
+        text-decoration: none;
+    }
+    
+    .schedule-form-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(44, 62, 80, 0.1);
+        border: 1px solid #e0e7ff;
+    }
+    
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #2d3e50;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .form-control, .form-select {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #e0e7ff;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.2s ease;
+        background: white;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        outline: none;
+        border-color: #4f8cff;
+        box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.1);
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        justify-content: flex-start;
+    }
+    
+    .preview-btn {
+        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+    }
+    
+    .preview-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(79, 140, 255, 0.4);
+    }
+    
+    .cancel-btn {
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+        color: #4f8cff;
+        border: 2px solid #e0e7ff;
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        font-size: 1rem;
+    }
+    
+    .cancel-btn:hover {
+        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        color: #4f8cff;
+        text-decoration: none;
+    }
+    
+    .alert {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-left: 4px solid #4f8cff;
+    }
+    
+    .btn-close {
+        float: right;
+        background: none;
+        border: none;
+        font-size: 1.2rem;
+        cursor: pointer;
+        color: #6b7280;
+    }
+    
+    .btn-close:hover {
+        color: #2d3e50;
+    }
+    
+    @media (max-width: 768px) {
+        .schedule-header-card {
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+        }
+        
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+        
+        .form-actions {
+            flex-direction: column;
+        }
+        
+        .preview-btn, .cancel-btn {
+            width: 100%;
+            text-align: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="schedule-container">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message|linebreaks }}
+                <button type="button" class="btn-close" onclick="this.parentElement.style.display='none'">&times;</button>
+            </div>
+        {% endfor %}
+    {% endif %}
+    
+    <div class="schedule-header-card">
+        <h3>📅 Schedule New Exam</h3>
+        <a href="{% url 'faculty_dashboard' %}" class="back-btn">← Back</a>
+    </div>
+    
+    <div class="schedule-form-card">
+        <form method="post" action="{% url 'schedule_exam_preview' %}">
+            {% csrf_token %}
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="examName">Exam Name</label>
+                    <input type="text" class="form-control" id="examName" name="examName" required>
+                </div>
+                <div class="form-group">
+                    <label for="warningLimit">Warning Limit</label>
+                    <input type="number" class="form-control" id="warningLimit" name="warningLimit" min="1" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="examDate">Exam Date</label>
+                    <input type="date" class="form-control" id="examDate" name="examDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="examTime">Exam Time</label>
+                    <input type="time" class="form-control" id="examTime" name="examTime" required>
+                </div>
+                <div class="form-group">
+                    <label for="freezeTime">Duration (Minutes)</label>
+                    <select class="form-select" id="freezeTime" name="freezeTime" required>
+                        <option value="">Select duration</option>
+                        <option value="15">15 minutes</option>
+                        <option value="30">30 minutes</option>
+                        <option value="45">45 minutes</option>
+                        <option value="60">1 hour</option>
+                        <option value="90">1.5 hours</option>
+                        <option value="120">2 hours</option>
+                        <option value="180">3 hours</option>
+                        <option value="240">4 hours</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="sheetUrl">Google Sheet URL (Questions)</label>
+                <input type="url" class="form-control" id="sheetUrl" name="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/..." required>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="preview-btn">Preview</button>
+                <a href="{% url 'faculty_dashboard' %}" class="cancel-btn">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %} 

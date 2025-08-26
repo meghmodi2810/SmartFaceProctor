@@ -1,0 +1,97 @@
+:root {
+    --primary: #2a2e94; /* Deep blue from logo */
+    --primary-dark: #6c2eb7; /* Rich purple accent */
+    --bg-gradient: linear-gradient(135deg, #e6eaff 0%, #f3f4ff 100%); /* Soft blue gradient */
+}
+
+* {
+    font-family: "Inter", sans-serif;
+}
+
+body {
+    min-height: 100vh;
+    background: var(--bg-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.logo-img {
+  width: 80px;
+  height: auto;
+  border-radius: 8px;
+}
+
+.logo-big {
+  max-width: 300px;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(42, 46, 148, 0.10);
+}
+
+.card {
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 15px 35px rgba(42, 46, 148, 0.10);
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #fff;
+}
+
+.card-body {
+    padding: 2rem;
+}
+
+.brand {
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: -0.5px;
+}
+
+.form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.2rem rgba(42, 46, 148, 0.15);
+}
+
+.btn-primary {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    transition: background 0.2s, border 0.2s;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
+}
+
+.logo-container {
+    background-color: #e6eaff;
+}
+
+@media (min-width: 992px) {
+    .card {
+        flex-direction: row;
+        align-items: stretch;
+    }
+
+    .card-body {
+        flex: 1 1 60%;
+        padding: 3rem;
+    }
+
+    .login-illustration {
+        flex: 1 1 40%;
+        background: url("https://images.unsplash.com/photo-1615065599575-6b7c1d6ff25b?q=80&w=1200&auto=format&fit=crop") center/cover no-repeat;
+    }
+}
+
+@media (max-width: 991px) {
+    .login-illustration {
+        display: none;
+    }
+}

@@ -1,0 +1,309 @@
+{% extends 'admin_base.html' %}
+
+{% block title %}Violations Management - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-exclamation-triangle me-2"></i>Violations Management</h2>
+    <div class="btn-group">
+        <button class="btn btn-outline-primary" onclick="exportViolations()">
+            <i class="fas fa-download me-2"></i>Export Data
+        </button>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5>Total Violations</h5>
+                        <h3>{{ total_violations }}</h3>
+                    </div>
+                    <i class="fas fa-exclamation-triangle fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5>Face Not Visible</h5>
+                        <h3>{{ face_violations }}</h3>
+                    </div>
+                    <i class="fas fa-user-slash fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5>Multiple Faces</h5>
+                        <h3>{{ multiple_face_violations }}</h3>
+                    </div>
+                    <i class="fas fa-users fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-secondary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5>Other Violations</h5>
+                        <h3>{{ other_violations }}</h3>
+                    </div>
+                    <i class="fas fa-ban fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter and Search -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Violation Type</label>
+                <select name="violation_type" class="form-select">
+                    <option value="">All Types</option>
+                    <option value="face_not_visible" {% if request.GET.violation_type == 'face_not_visible' %}selected{% endif %}>Face Not Visible</option>
+                    <option value="multiple_faces" {% if request.GET.violation_type == 'multiple_faces' %}selected{% endif %}>Multiple Faces</option>
+                    <option value="looking_away" {% if request.GET.violation_type == 'looking_away' %}selected{% endif %}>Looking Away</option>
+                    <option value="suspicious_activity" {% if request.GET.violation_type == 'suspicious_activity' %}selected{% endif %}>Suspicious Activity</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Exam Filter</label>
+                <select name="exam" class="form-select">
+                    <option value="">All Exams</option>
+                    {% for exam in all_exams %}
+                        <option value="{{ exam.id }}" {% if request.GET.exam == exam.id|stringformat:"s" %}selected{% endif %}>
+                            {{ exam.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Search</label>
+                <input type="text" name="search" class="form-control" placeholder="Search by student name or username" value="{{ request.GET.search }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fas fa-search me-2"></i>Filter
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Violations Table -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Student</th>
+                        <th>Exam</th>
+                        <th>Violation Type</th>
+                        <th>Timestamp</th>
+                        <th>Severity</th>
+                        <th>Description</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for violation in violations %}
+                    <tr>
+                        <td>
+                            <div>
+                                <strong>{{ violation.student.first_name }} {{ violation.student.last_name }}</strong>
+                            </div>
+                            <small class="text-muted">{{ violation.student.username }}</small>
+                        </td>
+                        <td>
+                            <div>{{ violation.exam.name }}</div>
+                            <small class="text-muted">{{ violation.exam.date|date:"M d, Y" }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-{% if violation.violation_type == 'face_not_visible' %}warning{% elif violation.violation_type == 'multiple_faces' %}info{% elif violation.violation_type == 'looking_away' %}secondary{% else %}danger{% endif %}">
+                                {{ violation.get_violation_type_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div>{{ violation.timestamp|date:"M d, Y" }}</div>
+                            <small class="text-muted">{{ violation.timestamp|time:"H:i:s" }}</small>
+                        </td>
+                        <td>
+                            {% if violation.severity %}
+                                <span class="badge bg-{% if violation.severity == 'high' %}danger{% elif violation.severity == 'medium' %}warning{% else %}info{% endif %}">
+                                    {{ violation.severity|title }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if violation.description %}
+                                {{ violation.description|truncatechars:50 }}
+                            {% else %}
+                                <span class="text-muted">No description</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-info" onclick="viewViolation({{ violation.id }})" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-outline-danger" onclick="deleteViolation({{ violation.id }})" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                            <p>No violations found matching your criteria.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if violations.has_other_pages %}
+        <nav aria-label="Violation pagination">
+            <ul class="pagination justify-content-center">
+                {% if violations.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ violations.previous_page_number }}{% if request.GET.violation_type %}&violation_type={{ request.GET.violation_type }}{% endif %}{% if request.GET.exam %}&exam={{ request.GET.exam }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">Previous</a>
+                    </li>
+                {% endif %}
+                
+                {% for num in violations.paginator.page_range %}
+                    {% if violations.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% elif num > violations.number|add:'-3' and num < violations.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if request.GET.violation_type %}&violation_type={{ request.GET.violation_type }}{% endif %}{% if request.GET.exam %}&exam={{ request.GET.exam }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if violations.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ violations.next_page_number }}{% if request.GET.violation_type %}&violation_type={{ request.GET.violation_type }}{% endif %}{% if request.GET.exam %}&exam={{ request.GET.exam }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}">Next</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Violation Detail Modal -->
+<div class="modal fade" id="violationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Violation Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="violationDetails">
+                <!-- Content will be loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function viewViolation(violationId) {
+    fetch(`/customadmin/violations/${violationId}/detail/`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('violationDetails').innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Student Information</h6>
+                        <p><strong>Name:</strong> ${data.student_name}</p>
+                        <p><strong>Username:</strong> ${data.student_username}</p>
+                        <p><strong>Email:</strong> ${data.student_email}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Exam Information</h6>
+                        <p><strong>Exam:</strong> ${data.exam_name}</p>
+                        <p><strong>Date:</strong> ${data.exam_date}</p>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Violation Details</h6>
+                        <p><strong>Type:</strong> ${data.violation_type}</p>
+                        <p><strong>Severity:</strong> ${data.severity || 'Not specified'}</p>
+                        <p><strong>Timestamp:</strong> ${data.timestamp}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Description</h6>
+                        <p>${data.description || 'No description provided'}</p>
+                    </div>
+                </div>
+            `;
+            
+            const modal = new bootstrap.Modal(document.getElementById('violationModal'));
+            modal.show();
+        })
+        .catch(error => {
+            alert('Error loading violation details. Please try again.');
+        });
+}
+
+function deleteViolation(violationId) {
+    if (confirm('Are you sure you want to delete this violation record? This action cannot be undone.')) {
+        fetch(`/customadmin/violations/${violationId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Error deleting violation. Please try again.');
+            }
+        })
+        .catch(error => {
+            alert('Error deleting violation. Please try again.');
+        });
+    }
+}
+
+function exportViolations() {
+    const params = new URLSearchParams(window.location.search);
+    window.open(`/customadmin/violations/export/?${params.toString()}`, '_blank');
+}
+</script>
+{% endblock %}

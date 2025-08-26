@@ -1,0 +1,304 @@
+{% extends 'student_base.html' %}
+
+{% block title %}Waiting for Exam - {{ exam.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .waiting-container {
+        max-width: 600px;
+        margin: 3rem auto;
+        padding: 2rem;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        box-shadow: 0 8px 32px rgba(44, 62, 80, 0.15);
+        text-align: center;
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .waiting-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+
+    .waiting-title {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #2d3e50;
+        margin-bottom: 1rem;
+    }
+
+    .exam-name {
+        font-size: 1.5rem;
+        color: #4f8cff;
+        margin-bottom: 2rem;
+        font-weight: 600;
+    }
+
+    .countdown-section {
+        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+    }
+
+    .countdown-title {
+        font-size: 1.2rem;
+        color: #2d3e50;
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+
+    .countdown-timer {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #4f8cff;
+        font-family: 'Courier New', monospace;
+        margin-bottom: 1rem;
+    }
+
+    .exam-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .detail-card {
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+        padding: 1rem;
+        border-radius: 10px;
+        border-left: 4px solid #4f8cff;
+    }
+
+    .detail-label {
+        font-size: 0.9rem;
+        color: #6b7280;
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .detail-value {
+        font-size: 1.1rem;
+        color: #2d3e50;
+        font-weight: 600;
+    }
+
+    .instructions {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        padding: 1.5rem;
+        border-radius: 12px;
+        border-left: 4px solid #f59e0b;
+        margin-bottom: 2rem;
+        text-align: left;
+    }
+
+    .instructions h4 {
+        color: #92400e;
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+    }
+
+    .instructions ul {
+        color: #92400e;
+        margin: 0;
+        padding-left: 1.5rem;
+    }
+
+    .instructions li {
+        margin-bottom: 0.5rem;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(79, 140, 255, 0.4);
+    }
+
+    .btn-secondary {
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+        color: #4f8cff;
+        border: 2px solid #e0e7ff;
+    }
+
+    .btn-secondary:hover {
+        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        transform: translateY(-2px);
+    }
+
+    .auto-refresh-notice {
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        padding: 1rem;
+        border-radius: 8px;
+        margin-top: 1rem;
+        color: #065f46;
+        font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+        .waiting-container {
+            margin: 1rem;
+            padding: 1.5rem;
+        }
+        
+        .waiting-title {
+            font-size: 1.5rem;
+        }
+        
+        .exam-name {
+            font-size: 1.2rem;
+        }
+        
+        .countdown-timer {
+            font-size: 2rem;
+        }
+        
+        .action-buttons {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="waiting-container">
+    <div class="waiting-icon">⏰</div>
+    <h1 class="waiting-title">Exam Not Started Yet</h1>
+    <div class="exam-name">{{ exam.title }}</div>
+
+    <div class="countdown-section">
+        <div class="countdown-title">Time Until Exam Starts</div>
+        <div class="countdown-timer" id="countdown-timer">--:--:--</div>
+        <div class="auto-refresh-notice">
+            🔄 This page will automatically refresh every 30 seconds
+        </div>
+    </div>
+
+    <div class="exam-details">
+        <div class="detail-card">
+            <div class="detail-label">Start Time</div>
+            <div class="detail-value">{{ exam.date|date:"H:i" }}</div>
+        </div>
+        <div class="detail-card">
+            <div class="detail-label">Date</div>
+            <div class="detail-value">{{ exam.date|date:"M d, Y" }}</div>
+        </div>
+        <div class="detail-card">
+            <div class="detail-label">Duration</div>
+            <div class="detail-value">{{ exam.duration_minutes }} min</div>
+        </div>
+        <div class="detail-card">
+            <div class="detail-label">Questions</div>
+            <div class="detail-value">{{ questions_count }}</div>
+        </div>
+    </div>
+
+    <div class="instructions">
+        <h4>📋 While You Wait</h4>
+        <ul>
+            <li>Ensure your internet connection is stable</li>
+            <li>Test your camera and microphone</li>
+            <li>Close unnecessary applications</li>
+            <li>Find a quiet, well-lit environment</li>
+            <li>Have your ID ready for verification</li>
+            <li>Keep this page open - it will refresh automatically</li>
+        </ul>
+    </div>
+
+    <div class="action-buttons">
+        <button class="btn btn-primary" onclick="location.reload()">
+            🔄 Refresh Now
+        </button>
+        <a href="{% url 'student_exams' %}" class="btn btn-secondary">
+            ← Back to Exams
+        </a>
+    </div>
+</div>
+
+<script>
+// Countdown timer
+function updateCountdown() {
+    const examStartTime = new Date('{{ exam.date|date:"Y-m-d H:i:s" }}').getTime();
+    const now = new Date().getTime();
+    const timeLeft = examStartTime - now;
+
+    if (timeLeft <= 0) {
+        // Exam has started, redirect to exam
+        window.location.href = "{% url 'mcq_exam' exam.id %}";
+        return;
+    }
+
+    const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+    const countdownText = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    document.getElementById('countdown-timer').textContent = countdownText;
+}
+
+// Update countdown every second
+setInterval(updateCountdown, 1000);
+updateCountdown(); // Initial call
+
+// Auto-refresh every 30 seconds
+setInterval(function() {
+    location.reload();
+}, 30000);
+
+// Check if exam has started every 10 seconds
+setInterval(function() {
+    fetch(window.location.href)
+        .then(response => response.text())
+        .then(html => {
+            // If the page content changes (exam started), reload
+            if (html.includes('Start Exam Now')) {
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.log('Auto-check failed:', error);
+        });
+}, 10000);
+</script>
+{% endblock %} 

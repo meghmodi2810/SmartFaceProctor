@@ -1,0 +1,332 @@
+{% extends 'faculty_base.html' %}
+{% load static %}
+
+{% block title %}Faculty Dashboard - Proctoring System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .welcome-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(44, 62, 80, 0.1);
+        border: 1px solid #e0e7ff;
+        margin-bottom: 2rem;
+    }
+    
+    .welcome-card h2 {
+        color: #2d3e50;
+        margin-bottom: 0.5rem;
+        font-size: 2rem;
+    }
+    
+    .welcome-card p {
+        color: #6b7280;
+        font-size: 1.1rem;
+    }
+    
+    .exams-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(44, 62, 80, 0.1);
+        border: 1px solid #e0e7ff;
+        margin-bottom: 2rem;
+    }
+    
+    .exams-header {
+        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
+        color: white;
+        padding: 1.5rem 2rem;
+        border-radius: 16px 16px 0 0;
+        font-size: 1.2rem;
+        font-weight: 600;
+    }
+    
+    .exams-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    
+    .exam-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid #e0e7ff;
+        transition: background-color 0.2s ease;
+    }
+    
+    .exam-item:last-child {
+        border-bottom: none;
+    }
+    
+    .exam-item:hover {
+        background-color: #f8fafc;
+    }
+    
+    .exam-info {
+        flex: 1;
+    }
+    
+    .exam-title {
+        font-weight: 600;
+        color: #2d3e50;
+        margin-bottom: 0.25rem;
+    }
+    
+    .exam-date {
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
+    
+    .delete-btn {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.9rem;
+    }
+    
+    .delete-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+    
+    .schedule-btn {
+        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+        float: right;
+        margin-bottom: 1rem;
+    }
+    
+    .schedule-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(79, 140, 255, 0.4);
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: #6b7280;
+    }
+    
+    /* Modal Styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    
+    .modal-content {
+        background: white;
+        padding: 2rem;
+        border-radius: 16px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        position: relative;
+    }
+    
+    .close-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1.5rem;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #6b7280;
+        font-weight: bold;
+    }
+    
+    .close-btn:hover {
+        color: #2d3e50;
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #2d3e50;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #e0e7ff;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.2s ease;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #4f8cff;
+        box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.1);
+    }
+    
+    .submit-btn {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        width: 100%;
+        font-size: 1rem;
+    }
+    
+    .submit-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+    }
+    
+    @media (max-width: 768px) {
+        .exam-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        
+        .schedule-btn {
+            float: none;
+            width: 100%;
+        }
+        
+        .modal-content {
+            margin: 1rem;
+            padding: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert" style="background: rgba(255, 255, 255, 0.95); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; border-left: 4px solid #4f8cff;">
+                {{ message|linebreaks }}
+                <button type="button" class="btn-close" onclick="this.parentElement.style.display='none'" style="float: right; background: none; border: none; font-size: 1.2rem; cursor: pointer;">&times;</button>
+            </div>
+        {% endfor %}
+    {% endif %}
+    
+    <div class="welcome-card">
+        <h2>👨‍🏫 Welcome, {{ faculty.first_name }} (Faculty)</h2>
+        <p>Below are the exams you've created.</p>
+    </div>
+
+    <div class="exams-card">
+        <div class="exams-header">📚 Your Created Exams</div>
+        <ul class="exams-list">
+            {% for exam in exams_created %}
+                <li class="exam-item">
+                    <div class="exam-info">
+                        <div class="exam-title">{{ exam.title }}</div>
+                        <div class="exam-date">{{ exam.date|date:"M d, Y - H:i A" }}</div>
+                    </div>
+                    <form method="post" action="{% url 'delete_exam' exam.id %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="delete-btn">Delete</button>
+                    </form>
+                </li>
+            {% empty %}
+                <li class="empty-state">You haven't created any exams yet.</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <button class="schedule-btn" id="scheduleExamBtn">+ Schedule Exam</button>
+
+    <!-- Modal Overlay and Form -->
+    <div id="scheduleExamModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content">
+            <span class="close-btn" id="closeModalBtn">&times;</span>
+            <h4>Schedule New Exam</h4>
+            <form id="scheduleExamForm" method="post" action="{% url 'schedule_exam' %}">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="examName">Exam Name</label>
+                    <input type="text" class="form-control" id="examName" name="examName" required>
+                </div>
+                <div class="form-group">
+                    <label for="warningLimit">Warning Limit</label>
+                    <input type="number" class="form-control" id="warningLimit" name="warningLimit" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="examDate">Exam Date</label>
+                    <input type="date" class="form-control" id="examDate" name="examDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="examTime">Exam Time</label>
+                    <input type="time" class="form-control" id="examTime" name="examTime" required>
+                </div>
+                <div class="form-group">
+                    <label for="freezeTime">Exam Duration (Minutes)</label>
+                    <select class="form-control" id="freezeTime" name="freezeTime" required>
+                        <option value="">Select duration</option>
+                        <option value="15">15 minutes</option>
+                        <option value="30">30 minutes</option>
+                        <option value="45">45 minutes</option>
+                        <option value="60">1 hour</option>
+                        <option value="90">1.5 hours</option>
+                        <option value="120">2 hours</option>
+                        <option value="180">3 hours</option>
+                        <option value="240">4 hours</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="sheetUrl">Google Sheet URL (Questions)</label>
+                    <input type="url" class="form-control" id="sheetUrl" name="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/..." required>
+                </div>
+                <button type="submit" class="submit-btn">Schedule</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('scheduleExamBtn').onclick = function() {
+    document.getElementById('scheduleExamModal').style.display = 'flex';
+};
+document.getElementById('closeModalBtn').onclick = function() {
+    document.getElementById('scheduleExamModal').style.display = 'none';
+};
+window.onclick = function(event) {
+    var modal = document.getElementById('scheduleExamModal');
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
+};
+</script>
+{% endblock %}
