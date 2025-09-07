@@ -49,6 +49,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'core.session_middleware.SessionSecurityMiddleware',  # Enhanced session security (after auth)
+    'core.session_middleware.ExamSessionMiddleware',  # Exam-specific session handling
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'core.middleware.LoginRequiredMiddleware',  # Existing middleware
@@ -57,6 +59,7 @@ MIDDLEWARE = [
     'core.admin_middleware.AdminAuditMiddleware',  # Admin audit logging
     'core.admin_middleware.AdminIPWhitelistMiddleware',  # Admin IP whitelist
     'core.admin_middleware.AdminMaintenanceModeMiddleware',  # Admin maintenance mode
+    'core.session_middleware.SessionCleanupMiddleware',  # Session cleanup
 ]
 
 
@@ -65,6 +68,25 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 1800  # 30 minutes in seconds
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
+SESSION_COOKIE_HTTPONLY = True  # Prevent XSS attacks
+SESSION_COOKIE_SAMESITE = 'Lax'  # CSRF protection
+SESSION_COOKIE_NAME = 'proctorsessionid'  # Custom session cookie name
+
+# CSRF Settings
+CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_AGE = 3600  # 1 hour
+CSRF_COOKIE_NAME = 'proctorcsrftoken'
+
+# Security Settings
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
 
 ROOT_URLCONF = 'proctor.urls'
 

@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from . import admin_views
+from . import session_admin_views
 
 urlpatterns = [
     path('', views.home_redirect, name='home_redirect'),
@@ -52,4 +53,9 @@ urlpatterns = [
     path('customadmin/bugs/<int:bug_id>/', admin_views.admin_bug_detail, name='admin_bug_detail'),
     path('customadmin/settings/', admin_views.admin_system_settings, name='admin_system_settings'),
     path('customadmin/export/', admin_views.admin_export_data, name='admin_export_data'),
+    
+    # Session Management URLs
+    path('customadmin/sessions/', session_admin_views.admin_session_monitor, name='admin_session_monitor'),
+    path('customadmin/sessions/user/<int:user_id>/', session_admin_views.admin_user_sessions, name='admin_user_sessions'),
+    path('customadmin/sessions/action/', session_admin_views.admin_session_action, name='admin_session_action'),
 ]

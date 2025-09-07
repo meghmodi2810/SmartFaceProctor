@@ -13,6 +13,7 @@ import csv
 
 from .models import User, Exam, Question, Submission, Violation, BugReport, PasswordResetOTP, ExamAssignment
 from .Modules.send_email_using_sheets import SmartFaceProctorMailer
+from .views import get_client_ip
 
 
 def admin_required(view_func):
@@ -28,20 +29,68 @@ def admin_required(view_func):
 
 
 def admin_login(request):
-    """Custom admin login view"""
+    """Enhanced custom admin login view with session security"""
+    # Check if admin is already logged in
+    if request.user.is_authenticated and request.user.role == 'Admin':
+        return redirect('admin_dashboard')
+    
     if request.method == 'POST':
         username = request.POST.get('username', '').strip()
         password = request.POST.get('password')
-
+        remember_me = request.POST.get('remember_me')
+        
+        # Rate limiting for admin login attempts
+        admin_login_attempts_key = f'admin_login_attempts_{username}'
+        admin_login_attempts = request.session.get(admin_login_attempts_key, 0)
+        
+        if admin_login_attempts >= 3:  # Stricter limit for admin
+            messages.error(request, 'Too many failed admin login attempts. Please try again later.')
+            return render(request, 'admin_login.html')
+        
         user = authenticate(request, username=username, password=password)
         if user is not None:
-            if user.role == 'Admin':
+            if user.role == 'Admin' and user.is_active:
+                # Clear failed login attempts
+                if admin_login_attempts_key in request.session:
+                    del request.session[admin_login_attempts_key]
+                
+                # Regenerate session key for security
+                request.session.cycle_key()
+                
                 login(request, user)
+                
+                # Set session expiry for admin (shorter for security)
+                if remember_me:
+                    request.session.set_expiry(28800)  # 8 hours max for admin
+                else:
+                    request.session.set_expiry(3600)  # 1 hour default for admin
+                
+                # Initialize admin session security data
+                import time
+                request.session['admin_session_start'] = time.time()
+                request.session['admin_last_activity'] = time.time()
+                request.session['admin_user_agent'] = request.META.get('HTTP_USER_AGENT', '')
+                request.session['admin_ip_address'] = get_client_ip(request)
+                request.session['admin_login_count'] = request.session.get('admin_login_count', 0) + 1
+                request.session['is_admin_session'] = True
+                
+                messages.success(request, f'Welcome, Admin {user.first_name or user.username}!')
                 return redirect('admin_dashboard')
-            else:
+            elif user.role != 'Admin':
                 messages.error(request, 'Access denied. Admin privileges required.')
+            else:
+                messages.error(request, 'Admin account is deactivated. Contact system administrator.')
         else:
-            messages.error(request, 'Invalid credentials')
+            # Increment failed admin login attempts
+            request.session[admin_login_attempts_key] = admin_login_attempts + 1
+            request.session.modified = True
+            
+            remaining_attempts = 3 - (admin_login_attempts + 1)
+            if remaining_attempts > 0:
+                messages.error(request, f'Invalid admin credentials. {remaining_attempts} attempts remaining.')
+            else:
+                messages.error(request, 'Too many failed admin attempts. Access temporarily blocked.')
+        
         return redirect('admin_login')
     
     return render(request, 'admin_login.html')
@@ -708,7 +757,18 @@ def admin_export_data(request):
 
 
 def admin_logout(request):
-    """Admin logout"""
-    logout(request)
-    messages.success(request, 'Logged out successfully.')
+    """Enhanced admin logout with proper session cleanup"""
+    if request.user.is_authenticated and request.user.role == 'Admin':
+        # Log the admin logout activity
+        admin_name = request.user.username
+        
+        # Clear all session data including admin-specific data
+        request.session.flush()
+        
+        # Perform logout
+        logout(request)
+        
+        # Add logout message
+        messages.success(request, f'Admin {admin_name} logged out successfully.')
+    
     return redirect('admin_login')

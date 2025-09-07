@@ -16,6 +16,15 @@ from django.urls import reverse
 from .models import Exam, Question, BugReport
 from .Modules.SheetManagerModule import get_questions_from_sheet
 
+def get_client_ip(request):
+	"""Get the client's IP address"""
+	x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+	if x_forwarded_for:
+		ip = x_forwarded_for.split(',')[0]
+	else:
+		ip = request.META.get('REMOTE_ADDR')
+	return ip
+
 # Suppress TensorFlow warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # 0 = all messages, 1 = INFO, 2 = WARNING, 3 = ERROR
 warnings.filterwarnings('ignore', category=RuntimeWarning)
@@ -25,28 +34,85 @@ def home_redirect(request):
 	return redirect('login')
 
 def login_view(request):
+	# Check if user is already logged in
+	if request.user.is_authenticated:
+		# Redirect based on user role
+		if request.user.role == 'Admin':
+			return redirect('admin_dashboard')
+		elif request.user.role == 'Student':
+			return redirect('student_dashboard')
+		elif request.user.role == 'Faculty':
+			return redirect('faculty_dashboard')
+	
 	if request.method == 'POST':
 		username = request.POST.get('username', '').strip()
 		password = request.POST.get('password')
+		remember_me = request.POST.get('remember_me')
+		
+		# Rate limiting check
+		login_attempts_key = f'login_attempts_{username}'
+		login_attempts = request.session.get(login_attempts_key, 0)
+		
+		if login_attempts >= 5:
+			messages.error(request, 'Too many failed login attempts. Please try again later.')
+			return render(request, 'login.html')
 		
 		user = authenticate(request, username=username, password=password)
 		if user is not None:
-			login(request, user)
-			
-			# Redirect based on user role
-			if user.role == 'Admin':
-				return redirect('admin_dashboard')
-			elif user.role == 'Student':
-				return redirect('student_dashboard')
-			elif user.role == 'Faculty':
-				return redirect('faculty_dashboard')
+			if user.is_active:
+				# Clear failed login attempts
+				if login_attempts_key in request.session:
+					del request.session[login_attempts_key]
+				
+				# Regenerate session key for security
+				request.session.cycle_key()
+				
+				login(request, user)
+				
+				# Set session expiry based on remember me
+				if remember_me:
+					request.session.set_expiry(1209600)  # 2 weeks
+				else:
+					request.session.set_expiry(1800)  # 30 minutes
+				
+				# Initialize session security data
+				import time
+				request.session['session_start'] = time.time()
+				request.session['last_activity'] = time.time()
+				request.session['user_agent'] = request.META.get('HTTP_USER_AGENT', '')
+				request.session['ip_address'] = get_client_ip(request)
+				request.session['login_count'] = request.session.get('login_count', 0) + 1
+				request.session['user_role'] = user.role
+				
+				# Add success message
+				messages.success(request, f'Welcome back, {user.first_name or user.username}!')
+				
+				# Redirect based on user role
+				if user.role == 'Admin':
+					return redirect('admin_dashboard')
+				elif user.role == 'Student':
+					return redirect('student_dashboard')
+				elif user.role == 'Faculty':
+					return redirect('faculty_dashboard')
+				else:
+					messages.error(request, 'Invalid user role')
+					logout(request)
+					return redirect('login')
 			else:
-				messages.error(request, 'Invalid user role')
-				logout(request)
-				return redirect('login')
+				messages.error(request, 'Your account has been deactivated. Please contact support.')
 		else:
-			messages.error(request, 'Invalid credentials')
-		return redirect('login')
+			# Increment failed login attempts
+			request.session[login_attempts_key] = login_attempts + 1
+			request.session.modified = True
+			
+			remaining_attempts = 5 - (login_attempts + 1)
+			if remaining_attempts > 0:
+				messages.error(request, f'Invalid credentials. {remaining_attempts} attempts remaining.')
+			else:
+				messages.error(request, 'Too many failed attempts. Please try again later.')
+			
+		return render(request, 'login.html')
+	
 	return render(request, 'login.html')
 
 def register(request):
@@ -434,8 +500,28 @@ def exam_proctoring_page(request):
 	return render(request, 'exam_proctoring.html')
 
 def logout_view(request):
-	logout(request)
-	return redirect('login')
+	"""Enhanced logout with proper session cleanup"""
+	if request.user.is_authenticated:
+		# Log the logout activity
+		user_name = request.user.username
+		user_role = request.user.role
+		
+		# Clear session data
+		request.session.flush()  # This removes all session data and regenerates session key
+		
+		# Perform logout
+		logout(request)
+		
+		# Add logout message
+		messages.success(request, f'You have been logged out successfully. Thank you, {user_name}!')
+		
+		# Redirect based on role for different login pages if needed
+		if user_role == 'Admin':
+			return redirect('admin_login')
+		else:
+			return redirect('login')
+	else:
+		return redirect('login')
 
 @login_required
 @require_POST

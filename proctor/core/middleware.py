@@ -19,8 +19,8 @@ class LoginRequiredMiddleware:
             reverse('check_migration'),
         ]
         
-        # Check if the path starts with admin URL
-        if request.path.startswith('/admin/'):
+        # Check if the path starts with admin URL or custom admin
+        if request.path.startswith('/admin/') or request.path.startswith('/customadmin/'):
             return self.get_response(request)
 
         # Check if the path starts with any exempt URL
