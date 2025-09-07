@@ -1,6 +1,53 @@
-opencv-python>=4.8.0
-mediapipe>=0.10.0
-django>=5.2.3
-gspread>=5.12.0
-oauth2client>=4.1.3
-mysqlclient>=2.2.0
+# Core Django Framework
+Django==5.2.5
+asgiref==3.8.1
+sqlparse==0.5.3
+tzdata==2025.2
+
+# Database
+mysqlclient==2.2.7
+
+# Computer Vision and AI
+opencv-python==4.12.0.88
+mediapipe==0.10.14
+numpy==2.2.6
+
+# Google Services Integration
+gspread==6.2.1
+oauth2client==4.1.3
+google-auth==2.40.3
+google-auth-oauthlib==1.2.2
+httplib2==0.22.0
+
+# HTTP Requests
+requests==2.32.3
+requests-oauthlib==2.0.0
+requests-toolbelt==1.0.0
+certifi==2025.4.26
+charset-normalizer==3.4.1
+idna==3.10
+urllib3==2.4.0
+
+# Additional AI/ML Libraries (for demo.py)
+torch==2.7.1
+torchvision==0.22.1
+# ultralytics  # Uncomment if YOLO functionality is needed
+
+# Utility Libraries
+Pillow==11.2.1
+python-dateutil==2.9.0.post0
+typing_extensions==4.13.2
+protobuf==4.25.8
+
+# Security and Authentication
+pyasn1==0.6.1
+pyasn1_modules==0.4.2
+rsa==4.9.1
+oauthlib==3.3.1
+
+# Development and Testing
+colorama==0.4.6
+
+# Optional: For enhanced functionality
+# psutil==7.0.0  # For system monitoring
+# pandas==2.3.0  # For data manipulation if needed
