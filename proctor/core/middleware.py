@@ -9,6 +9,8 @@ class LoginRequiredMiddleware:
     def __call__(self, request):
         # URLs that can be accessed without login
         exempt_urls = [
+            '/',  # Home page
+            '/static/',  # Static files
             reverse('login'),
             reverse('register'),
             reverse('forget'),
@@ -21,6 +23,10 @@ class LoginRequiredMiddleware:
         
         # Check if the path starts with admin URL or custom admin
         if request.path.startswith('/admin/') or request.path.startswith('/customadmin/'):
+            return self.get_response(request)
+
+        # Check if the path is for static files
+        if request.path.startswith(settings.STATIC_URL):
             return self.get_response(request)
 
         # Check if the path starts with any exempt URL

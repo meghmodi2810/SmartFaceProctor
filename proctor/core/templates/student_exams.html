@@ -78,16 +78,6 @@
         overflow: hidden;
     }
     
-    .exam-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, #4f8cff 0%, #2d3e50 100%);
-    }
-    
     .exam-card:hover {
         transform: translateY(-8px);
         box-shadow: 0 12px 40px rgba(44, 62, 80, 0.15);
@@ -298,6 +288,7 @@
         <button class="filter-btn" data-filter="upcoming">Upcoming</button>
         <button class="filter-btn" data-filter="ongoing">Ongoing</button>
         <button class="filter-btn" data-filter="completed">Completed</button>
+        <button class="filter-btn" data-filter="expired">Expired</button>
     </div>
     
     <div class="exams-grid">
@@ -316,22 +307,16 @@
                 </div>
                 <div class="exam-detail">
                     <i>⏰</i>
-                    <span>{{ exam.start_time|time:"H:i" }} - {{ exam.end_time|time:"H:i" }}</span>
+                    <span>{{ exam.date|time:"H:i" }} - {{ exam.end_time|time:"H:i" }}</span>
                 </div>
                 <div class="exam-detail">
                     <i>⏱️</i>
-                    <span>Duration: {{ exam.duration }} minutes</span>
+                    <span>Duration: {{ exam.duration_minutes }} minutes</span>
                 </div>
                 <div class="exam-detail">
                     <i>📝</i>
-                    <span>{{ exam.subject }}</span>
+                    <span>{{ exam.questions_count }} Questions</span>
                 </div>
-                {% if exam.instructions %}
-                <div class="exam-detail">
-                    <i>📋</i>
-                    <span>{{ exam.instructions|truncatewords:10 }}</span>
-                </div>
-                {% endif %}
             </div>
             
             <div class="exam-actions">
@@ -343,8 +328,11 @@
                 {% elif exam.status == 'completed' %}
                     <a href="{% url 'exam_results' exam.id %}" class="action-btn btn-primary">View Results</a>
                     <a href="{% url 'exam_review' exam.id %}" class="action-btn btn-secondary">Review</a>
-                {% else %}
-                    <button class="action-btn btn-disabled" disabled>Expired</button>
+                {% elif exam.status == 'expired' %}
+                    <div class="exam-detail text-danger">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span>You missed this exam</span>
+                    </div>
                 {% endif %}
             </div>
         </div>
@@ -396,4 +384,4 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 </script>
-{% endblock %} 
+{% endblock %}

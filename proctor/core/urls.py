@@ -4,7 +4,7 @@ from . import admin_views
 from . import session_admin_views
 
 urlpatterns = [
-    path('', views.home_redirect, name='home_redirect'),
+    path('', views.home, name='home'),  # Make home the default landing page
     path('login/', views.login_view, name='login'),
     path('register/', views.register, name='register'),
     path('forget/', views.forget, name='forget'),
@@ -34,6 +34,8 @@ urlpatterns = [
     path('report-bug/', views.report_bug, name='report_bug'),
     path('schedule_exam/', views.schedule_exam, name='schedule_exam'),
     path('delete_exam/<int:exam_id>/', views.delete_exam, name='delete_exam'),
+    path('faculty/edit_exam/<int:exam_id>/', views.edit_exam, name='edit_exam'),
+    path('check_exam_status/<int:exam_id>/', views.check_exam_status, name='check_exam_status'),
     
     # Custom Admin URLs
     path('customadmin/login/', admin_views.admin_login, name='admin_login'),

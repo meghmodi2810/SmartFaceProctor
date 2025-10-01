@@ -1,0 +1,144 @@
+{% extends 'faculty_base.html' %}
+
+{% block title %}Edit Exam - {{ exam.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .edit-container {
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 2rem;
+    }
+    
+    .edit-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    .edit-header h1 {
+        font-size: 2rem;
+        color: #2d3e50;
+        margin-bottom: 0.5rem;
+    }
+    
+    .edit-form {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 4px 20px rgba(44, 62, 80, 0.1);
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #2d3e50;
+        font-weight: 500;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #e0e7ff;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+        border-color: #4f8cff;
+        box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.1);
+        outline: none;
+    }
+    
+    .button-group {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+    
+    .btn {
+        padding: 0.75rem 2rem;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        text-align: center;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
+        color: white;
+    }
+    
+    .btn-secondary {
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+        color: #4f8cff;
+        border: 2px solid #e0e7ff;
+    }
+    
+    .btn:hover {
+        transform: translateY(-2px);
+    }
+    
+    .btn-primary:hover {
+        box-shadow: 0 6px 20px rgba(79, 140, 255, 0.4);
+    }
+    
+    .btn-secondary:hover {
+        border-color: #4f8cff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="edit-container">
+    <div class="edit-header">
+        <h1>Edit Exam</h1>
+        <p>Update the exam details below</p>
+    </div>
+
+    <form method="post" class="edit-form">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="examName">Exam Title</label>
+            <input type="text" id="examName" name="examName" class="form-control" value="{{ exam.title }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="warningLimit">Warning Limit</label>
+            <input type="number" id="warningLimit" name="warningLimit" class="form-control" value="{{ warning_limit }}" min="1" required>
+        </div>
+
+        <div class="form-group">
+            <label for="examDate">Exam Date</label>
+            <input type="date" id="examDate" name="examDate" class="form-control" value="{{ exam_date }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="examTime">Exam Time</label>
+            <input type="time" id="examTime" name="examTime" class="form-control" value="{{ exam_time }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="duration">Duration (minutes)</label>
+            <input type="number" id="duration" name="duration" class="form-control" value="{{ exam.duration_minutes }}" min="1" required>
+        </div>
+
+        <div class="form-group">
+            <label for="sheetUrl">Google Sheet URL</label>
+            <input type="url" id="sheetUrl" name="sheetUrl" class="form-control" value="{{ exam.sheet_url }}">
+            <small class="text-muted">Only update if you want to change the questions</small>
+        </div>
+
+        <div class="button-group">
+            <a href="{% url 'faculty_exams' %}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
