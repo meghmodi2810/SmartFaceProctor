@@ -1,0 +1,220 @@
+{% extends 'student_base.html' %}
+
+{% block title %}Waiting Room - {{ exam.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .waiting-room {
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 2rem;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+    
+    .exam-title {
+        color: #2c3e50;
+        margin-bottom: 1.5rem;
+    }
+    
+    .countdown-container {
+        margin: 2rem 0;
+        padding: 2rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+    
+    .countdown-timer {
+        font-size: 3rem;
+        font-weight: bold;
+        color: #3498db;
+        margin: 1rem 0;
+        font-family: 'Courier New', monospace;
+    }
+    
+    .exam-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin: 2rem 0;
+    }
+    
+    .info-card {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #3498db;
+    }
+    
+    .info-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-bottom: 0.5rem;
+    }
+    
+    .info-value {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    
+    .instructions {
+        text-align: left;
+        margin: 2rem 0;
+        padding: 1.5rem;
+        background: #e9f7fe;
+        border-radius: 8px;
+        border-left: 4px solid #3498db;
+    }
+    
+    .instructions h4 {
+        margin-top: 0;
+        color: #2c3e50;
+    }
+    
+    .instructions ul {
+        padding-left: 1.5rem;
+    }
+    
+    .instructions li {
+        margin-bottom: 0.5rem;
+    }
+    
+    .status-message {
+        margin: 1rem 0;
+        padding: 1rem;
+        background: #e8f5e9;
+        color: #2e7d32;
+        border-radius: 4px;
+        display: none;
+    }
+    
+    @media (max-width: 768px) {
+        .waiting-room {
+            margin: 1rem;
+            padding: 1rem;
+        }
+        
+        .countdown-timer {
+            font-size: 2rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="waiting-room">
+    <h1 class="exam-title">Waiting Room: {{ exam.title }}</h1>
+    
+    <div class="status-message" id="statusMessage">
+        Please wait, the exam will start automatically when ready...
+    </div>
+    
+    <div class="countdown-container">
+        <div>Exam Starts In:</div>
+        <div class="countdown-timer" id="countdownTimer">--:--:--</div>
+    </div>
+    
+    <div class="exam-info">
+        <div class="info-card">
+            <div class="info-label">Start Time</div>
+            <div class="info-value">{{ exam.date|date:"g:i A" }}</div>
+        </div>
+        <div class="info-card">
+            <div class="info-label">Date</div>
+            <div class="info-value">{{ exam.date|date:"F j, Y" }}</div>
+        </div>
+        <div class="info-card">
+            <div class="info-label">Duration</div>
+            <div class="info-value">{{ exam.duration_minutes }} minutes</div>
+        </div>
+        <div class="info-card">
+            <div class="info-label">Questions</div>
+            <div class="info-value">{{ questions_count }}</div>
+        </div>
+    </div>
+    
+    <div class="instructions">
+        <h4>📋 Instructions While You Wait</h4>
+        <ul>
+            <li>Ensure you're in a quiet, well-lit environment</li>
+            <li>Close all other applications and browser tabs</li>
+            <li>Have your student ID ready for verification</li>
+            <li>Make sure your device is fully charged or plugged in</li>
+            <li>Test your internet connection</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+// Format time as HH:MM:SS
+function formatTime(seconds) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    
+    return [
+        h.toString().padStart(2, '0'),
+        m.toString().padStart(2, '0'),
+        s.toString().padStart(2, '0')
+    ].join(':');
+}
+
+// Update the countdown timer
+document.addEventListener('DOMContentLoaded', function() {
+    const countdownTimer = document.getElementById('countdownTimer');
+    const statusMessage = document.getElementById('statusMessage');
+    const examStartTime = new Date('{{ exam.date|date:"c" }}').getTime();
+    const checkInterval = 5000; // 5 seconds
+    let checkTimer;
+    
+    // Initial check
+    checkExamStatus();
+    
+    // Set up periodic check
+    checkTimer = setInterval(checkExamStatus, checkInterval);
+    
+    // Function to check exam status
+    function checkExamStatus() {
+        const now = new Date().getTime();
+        const timeUntilStart = Math.max(0, Math.floor((examStartTime - now) / 1000));
+        
+        // Update countdown
+        countdownTimer.textContent = formatTime(timeUntilStart);
+        
+        // If exam should have started, check with server
+        if (timeUntilStart <= 0) {
+            fetch('{% url "check_exam_status" exam.id %}')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.started) {
+                        // Stop checking and redirect
+                        clearInterval(checkTimer);
+                        window.location.href = data.redirect_url;
+                    } else {
+                        // Show status message
+                        statusMessage.style.display = 'block';
+                        statusMessage.textContent = 'Exam is about to start. Please wait...';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking exam status:', error);
+                    statusMessage.style.display = 'block';
+                    statusMessage.textContent = 'Error checking exam status. Please refresh the page.';
+                    statusMessage.style.backgroundColor = '#ffebee';
+                    statusMessage.style.color = '#c62828';
+                });
+        }
+    }
+    
+    // Also check when page becomes visible again
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+            checkExamStatus();
+        }
+    });
+});
+</script>
+{% endblock %}

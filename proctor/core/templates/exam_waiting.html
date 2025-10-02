@@ -237,23 +237,37 @@
 </div>
 
 <script>
+// Flag to prevent multiple redirects
+let isRedirecting = false;
+
 // Countdown timer
 function updateCountdown() {
-    const examStartTime = new Date('{{ exam.date|date:"Y-m-d H:i:s" }}').getTime();
+    if (isRedirecting) return;
+    
+    // Parse the exam start time correctly with timezone
+    // Django outputs ISO format with timezone: 2025-10-02T17:11:00+05:30
+    const examStartTimeStr = '{{ exam_start_iso }}';
+    const examStartTime = new Date(examStartTimeStr).getTime();
     const now = new Date().getTime();
     const timeLeft = examStartTime - now;
+    
+    // Debug logging (remove after testing)
+    if (!window.debugLogged) {
+        console.log('=== COUNTDOWN DEBUG ===');
+        console.log('Exam start time (ISO):', examStartTimeStr);
+        console.log('Exam start time (parsed):', new Date(examStartTimeStr));
+        console.log('Current time:', new Date());
+        console.log('Time left (seconds):', Math.floor(timeLeft / 1000));
+        window.debugLogged = true;
+    }
 
     if (timeLeft <= 0) {
-        // Clear any existing intervals
-        if (window.countdownInterval) {
-            clearInterval(window.countdownInterval);
+        // Exam has started, redirect directly to the exam interface
+        if (!isRedirecting) {
+            isRedirecting = true;
+            document.getElementById('countdown-timer').textContent = 'Starting exam...';
+            window.location.href = "{% url 'start_mcq_exam' exam.id %}";
         }
-        if (window.statusCheckInterval) {
-            clearInterval(window.statusCheckInterval);
-        }
-        
-        // Redirect to MCQ exam page
-        window.location.href = "{% url 'start_mcq_exam' exam.id %}";
         return;
     }
 
@@ -266,22 +280,30 @@ function updateCountdown() {
 }
 
 // Update countdown every second
-window.countdownInterval = setInterval(updateCountdown, 1000);
+const countdownInterval = setInterval(updateCountdown, 1000);
 updateCountdown(); // Initial call
 
 // Check exam status every 30 seconds without page reload
-window.statusCheckInterval = setInterval(function() {
+const statusCheckInterval = setInterval(function() {
+    if (isRedirecting) {
+        clearInterval(statusCheckInterval);
+        clearInterval(countdownInterval);
+        return;
+    }
+    
     fetch('/check_exam_status/{{ exam.id }}/')
         .then(response => response.json())
         .then(data => {
-            if (data.started) {
-                // Clear intervals before redirecting
-                clearInterval(window.countdownInterval);
-                clearInterval(window.statusCheckInterval);
+            if (data.started && !isRedirecting) {
+                isRedirecting = true;
+                clearInterval(statusCheckInterval);
+                clearInterval(countdownInterval);
                 window.location.href = "{% url 'start_mcq_exam' exam.id %}";
             }
         })
-        .catch(error => console.error('Error checking exam status:', error));
+        .catch(error => {
+            console.error('Error checking exam status:', error);
+        });
 }, 30000);
 </script>
 {% endblock %}

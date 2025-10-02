@@ -909,90 +909,147 @@ def exam_review(request, exam_id):
 
 @login_required
 def mcq_exam(request, exam_id):
-    user = request.user
-    if user.role != 'Student':
-        return redirect('faculty_dashboard')
-    
-    try:
-        exam = Exam.objects.get(id=exam_id)
-        questions = Question.objects.filter(exam=exam).order_by('id')
-        
-        # Check exam status
-        current_time = timezone.now()
-        exam_end_time = exam.date + timezone.timedelta(minutes=exam.duration_minutes)
-        
-        # Check if student has already submitted
-        existing_submission = Submission.objects.filter(student=user, exam=exam).first()
-        if existing_submission:
-            messages.error(request, 'You have already submitted this exam.')
-            return redirect('exam_results', exam_id=exam_id)
-        
-        # Determine exam status and show appropriate page
-        if current_time < exam.date:
-            # Exam hasn't started yet - show waiting page
-            context = {
-                'exam': exam,
-                'questions_count': questions.count(),
-                'student': user
-            }
-            return render(request, 'exam_waiting.html', context)
-            
-        elif current_time > exam_end_time:
-            # Exam has ended
-            messages.error(request, 'This exam has ended.')
-            return redirect('student_exams')
-            
-        # Check if exam has questions
-        if not questions.exists():
-            messages.error(request, 'This exam has no questions available.')
-            return redirect('student_exams')
-        
-        # Show MCQ interface for ongoing exam
-        context = {
-            'exam': exam,
-            'questions': questions,
-            'student': user,
-            'exam_duration': exam.duration_minutes,
-            'exam_end_time': exam_end_time.isoformat()
-        }
-        return render(request, 'mcq.html', context)
-            
-    except Exam.DoesNotExist:
-        messages.error(request, 'Exam not found.')
-        return redirect('student_exams')
+	user = request.user
+	if user.role != 'Student':
+		return redirect('faculty_dashboard')
+	
+	try:
+		exam = Exam.objects.get(id=exam_id)
+		questions = Question.objects.filter(exam=exam).order_by('id')
+		
+		# Check exam status
+		current_time = timezone.now()
+		exam_end_time = exam.date + timezone.timedelta(minutes=exam.duration_minutes)
+		
+		# Determine exam status
+		if current_time < exam.date:
+			# Exam hasn't started yet - show waiting page
+			context = {
+				'exam': exam,
+				'exam_start_iso': exam.date.isoformat(),
+				'questions_count': questions.count(),
+				'student': user
+			}
+			return render(request, 'exam_waiting.html', context)
+		elif current_time > exam_end_time:
+			# Exam has ended
+			messages.error(request, 'This exam has ended.')
+			return redirect('student_exams')
+		
+		# Check if student has already submitted
+		existing_submission = Submission.objects.filter(student=user, exam=exam).first()
+		if existing_submission:
+			messages.error(request, 'You have already submitted this exam.')
+			return redirect('exam_results', exam_id=exam_id)
+		
+		# Check if exam has questions
+		if not questions.exists():
+			messages.error(request, 'This exam has no questions available.')
+			return redirect('student_exams')
+		
+		# Exam is ready to start - show validation page first
+		context = {
+			'exam': exam,
+			'questions': questions,
+			'questions_count': questions.count(),
+			'student': user,
+			'exam_duration': exam.duration_minutes,
+			'exam_end_time': exam_end_time,
+			'exam_status': 'ready'
+		}
+		
+		return render(request, 'exam_validation.html', context)
+		
+	except Exam.DoesNotExist:
+		messages.error(request, 'Exam not found.')
+		return redirect('student_exams')
 
 @login_required
 def start_mcq_exam(request, exam_id):
-    user = request.user
-    if user.role != 'Student':
-        return redirect('faculty_dashboard')
-    
-    try:
-        exam = Exam.objects.get(id=exam_id)
-        
-        # Final validation before starting exam
-        current_time = timezone.now()
-        exam_end_time = exam.date + timezone.timedelta(minutes=exam.duration_minutes)
-        
-        if current_time < exam.date:
-            messages.error(request, 'Exam has not started yet.')
-            return redirect('mcq_exam', exam_id=exam_id)
-        elif current_time > exam_end_time:
-            messages.error(request, 'This exam has ended.')
-            return redirect('student_exams')
-        
-        # Check if student has already submitted
-        existing_submission = Submission.objects.filter(student=user, exam=exam).first()
-        if existing_submission:
-            messages.error(request, 'You have already submitted this exam.')
-            return redirect('exam_results', exam_id=exam_id)
-        
-        # Redirect to MCQ exam page for an ongoing exam
-        return redirect('mcq_exam', exam_id=exam_id)
-        
-    except Exam.DoesNotExist:
-        messages.error(request, 'Exam not found.')
-        return redirect('student_exams')
+	user = request.user
+	if user.role != 'Student':
+		return redirect('faculty_dashboard')
+	
+	try:
+		import json
+		exam = Exam.objects.get(id=exam_id)
+		questions = Question.objects.filter(exam=exam).order_by('id')
+		
+		# Check exam status
+		current_time = timezone.now()
+		exam_end_time = exam.date + timezone.timedelta(minutes=exam.duration_minutes)
+		
+		# Debug logging
+		print(f"=== START MCQ EXAM DEBUG ===")
+		print(f"Current time: {current_time}")
+		print(f"Exam start time: {exam.date}")
+		print(f"Exam end time: {exam_end_time}")
+		print(f"Time difference: {(current_time - exam.date).total_seconds()} seconds")
+		print(f"Has started: {current_time >= exam.date}")
+		print(f"Has ended: {current_time > exam_end_time}")
+		
+		# Check if exam has ended
+		if current_time > exam_end_time:
+			print(f"Exam ended - redirecting to student_exams")
+			messages.error(request, 'This exam has ended.')
+			return redirect('student_exams')
+		
+		# Check if exam hasn't started yet (with no buffer to avoid timing issues)
+		if current_time < exam.date:
+			print(f"Exam not started yet - showing waiting page")
+			# Instead of redirecting, render the waiting page directly
+			context = {
+				'exam': exam,
+				'exam_start_iso': exam.date.isoformat(),
+				'questions_count': questions.count(),
+				'student': user
+			}
+			return render(request, 'exam_waiting.html', context)
+		
+		# Check if student has already submitted
+		existing_submission = Submission.objects.filter(student=user, exam=exam).first()
+		if existing_submission:
+			print(f"Student already submitted - redirecting to results")
+			messages.error(request, 'You have already submitted this exam.')
+			return redirect('exam_results', exam_id=exam_id)
+		
+		# Check if exam has questions
+		if not questions.exists():
+			print(f"No questions available - redirecting to student_exams")
+			messages.error(request, 'This exam has no questions available.')
+			return redirect('student_exams')
+		
+		print(f"All checks passed - rendering MCQ exam")
+		
+		# Prepare questions data for JavaScript (JSON)
+		questions_data = []
+		for question in questions:
+			questions_data.append({
+				'id': question.id,
+				'text': question.text,
+				'options': [
+					question.option_a,
+					question.option_b,
+					question.option_c,
+					question.option_d
+				],
+				'correct_answer': question.answer
+			})
+		
+		context = {
+			'exam': exam,
+			'questions': questions,
+			'questions_data': json.dumps(questions_data),
+			'student': user,
+			'exam_duration': exam.duration_minutes,
+			'exam_end_time': exam_end_time.isoformat()
+		}
+		
+		return render(request, 'mcq.html', context)
+		
+	except Exam.DoesNotExist:
+		messages.error(request, 'Exam not found.')
+		return redirect('student_exams')
 
 @login_required
 def submit_exam(request, exam_id):
@@ -1021,15 +1078,34 @@ def submit_exam(request, exam_id):
 		if existing_submission:
 			return JsonResponse({'success': False, 'error': 'You have already submitted this exam'})
 		
+		# Calculate score based on correct answers
+		answers = data.get('answers', {})
+		questions = Question.objects.filter(exam=exam)
+		correct_count = 0
+		total_questions = questions.count()
+		
+		for question in questions:
+			student_answer = answers.get(str(question.id), '')
+			if student_answer == question.answer:
+				correct_count += 1
+		
+		# Calculate percentage score
+		score = (correct_count / total_questions * 100) if total_questions > 0 else 0
+		
 		# Create submission
-		score = data.get('score', 0)
 		submission = Submission.objects.create(
 			exam=exam,
 			student=user,
 			score=score
 		)
 		
-		return JsonResponse({'success': True, 'submission_id': submission.id})
+		return JsonResponse({
+			'success': True, 
+			'submission_id': submission.id,
+			'score': score,
+			'correct_count': correct_count,
+			'total_questions': total_questions
+		})
 		
 	except Exam.DoesNotExist:
 		return JsonResponse({'success': False, 'error': 'Exam not found'})
@@ -1270,16 +1346,8 @@ def check_exam_status(request, exam_id):
         if existing_submission:
             return JsonResponse({'started': False, 'message': 'You have already submitted this exam'})
             
-        # Verify exam has questions
-        questions_exist = Question.objects.filter(exam=exam).exists()
-        if not questions_exist:
-            return JsonResponse({'started': False, 'message': 'This exam has no questions available'})
-            
-        # All checks passed, exam is ready to start
-        return JsonResponse({
-            'started': True,
-            'redirect_url': reverse('start_mcq_exam', args=[exam_id])
-        })
+        # Exam is ready to start
+        return JsonResponse({'started': True})
         
     except Exam.DoesNotExist:
         return JsonResponse({'error': 'Exam not found'}, status=404)

@@ -198,7 +198,8 @@ function updateTimer() {
     if (timeLeft <= 0) {
         clearInterval(timerInterval);
         document.getElementById('timer').textContent = 'Time\'s up!';
-        submitExam();
+        document.getElementById('submitBtn').disabled = true;
+        submitExam(true); // Auto-submit when time expires
         return;
     }
     
@@ -231,14 +232,8 @@ document.querySelectorAll('.option-radio').forEach(radio => {
     });
 });
 
-// Handle form submission
-document.getElementById('examForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    if (!confirm('Are you sure you want to submit your exam?')) {
-        return;
-    }
-    
+// Function to submit exam
+async function submitExam(autoSubmit = false) {
     const answers = {};
     document.querySelectorAll('.option-radio:checked').forEach(radio => {
         const questionId = radio.name.substring(1);
@@ -246,7 +241,7 @@ document.getElementById('examForm').addEventListener('submit', async function(e)
     });
     
     try {
-        const response = await fetch('/submit_exam/{{ exam.id }}/', {
+        const response = await fetch('/student/submit-exam/{{ exam.id }}/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -257,13 +252,26 @@ document.getElementById('examForm').addEventListener('submit', async function(e)
         
         const data = await response.json();
         if (data.success) {
-            window.location.href = `/exam_results/${exam.id}/`;
+            // Clear saved answers from localStorage
+            localStorage.removeItem('exam_{{ exam.id }}_answers');
+            window.location.href = `/student/exam-results/{{ exam.id }}/`;
         } else {
             alert('Error submitting exam: ' + data.error);
         }
     } catch (error) {
         alert('Error submitting exam: ' + error.message);
     }
+}
+
+// Handle form submission
+document.getElementById('examForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    if (!confirm('Are you sure you want to submit your exam?')) {
+        return;
+    }
+    
+    await submitExam(false);
 });
 
 // Save answers periodically
