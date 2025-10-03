@@ -18,6 +18,7 @@ from .Modules.SheetManagerModule import get_questions_from_sheet
 import json
 from django.core.mail import send_mail
 from django.conf import settings
+from django.db import models
 
 def get_client_ip(request):
 	"""Get the client's IP address"""
@@ -734,6 +735,135 @@ def faculty_profile(request):
 	if user.role != 'Faculty':
 		return redirect('student_dashboard')
 	return render(request, 'faculty_profile.html', {'faculty': user})
+
+@login_required
+def faculty_results(request):
+	user = request.user
+	if user.role != 'Faculty':
+		return redirect('student_dashboard')
+	
+	# Get all exams created by this faculty
+	exams = Exam.objects.filter(created_by=user).order_by('-date')
+	
+	# Add submission statistics for each exam
+	for exam in exams:
+		exam.total_submissions = Submission.objects.filter(exam=exam).count()
+		exam.average_score = Submission.objects.filter(exam=exam).aggregate(
+			avg_score=models.Avg('score')
+		)['avg_score'] or 0
+		exam.highest_score = Submission.objects.filter(exam=exam).aggregate(
+			max_score=models.Max('score')
+		)['max_score'] or 0
+		exam.lowest_score = Submission.objects.filter(exam=exam).aggregate(
+			min_score=models.Min('score')
+		)['min_score'] or 0
+	
+	return render(request, 'faculty_results.html', {
+		'faculty': user,
+		'exams': exams
+	})
+
+@login_required
+def faculty_exam_results(request, exam_id):
+	user = request.user
+	if user.role != 'Faculty':
+		return redirect('student_dashboard')
+	
+	try:
+		exam = Exam.objects.get(id=exam_id, created_by=user)
+		submissions = Submission.objects.filter(exam=exam).select_related('student').order_by('-score')
+		
+		# Calculate statistics
+		total_students = submissions.count()
+		if total_students > 0:
+			average_score = submissions.aggregate(avg=models.Avg('score'))['avg']
+			highest_score = submissions.aggregate(max=models.Max('score'))['max']
+			lowest_score = submissions.aggregate(min=models.Min('score'))['min']
+			
+			# Pass/Fail analysis (assuming 40% is passing)
+			passed = submissions.filter(score__gte=40).count()
+			failed = total_students - passed
+		else:
+			average_score = 0
+			highest_score = 0
+			lowest_score = 0
+			passed = 0
+			failed = 0
+		
+		context = {
+			'faculty': user,
+			'exam': exam,
+			'submissions': submissions,
+			'stats': {
+				'total_students': total_students,
+				'average_score': round(average_score, 2) if average_score else 0,
+				'highest_score': highest_score,
+				'lowest_score': lowest_score,
+				'passed': passed,
+				'failed': failed,
+				'pass_percentage': round((passed / total_students * 100), 2) if total_students > 0 else 0
+			}
+		}
+		
+		return render(request, 'faculty_exam_results.html', context)
+		
+	except Exam.DoesNotExist:
+		messages.error(request, 'Exam not found or you do not have permission to view it.')
+		return redirect('faculty_results')
+
+@login_required
+def generate_report_card(request, exam_id, student_id):
+	user = request.user
+	if user.role != 'Faculty':
+		return redirect('student_dashboard')
+	
+	try:
+		from django.http import HttpResponse
+		from django.template.loader import render_to_string
+		
+		exam = Exam.objects.get(id=exam_id, created_by=user)
+		from .models import User
+		student = User.objects.get(id=student_id, role='Student')
+		submission = Submission.objects.get(exam=exam, student=student)
+		
+		# Get all questions and student's performance
+		questions = Question.objects.filter(exam=exam)
+		total_questions = questions.count()
+		
+		# Calculate grade
+		score = submission.score
+		if score >= 90:
+			grade = 'A+'
+		elif score >= 80:
+			grade = 'A'
+		elif score >= 70:
+			grade = 'B+'
+		elif score >= 60:
+			grade = 'B'
+		elif score >= 50:
+			grade = 'C'
+		elif score >= 40:
+			grade = 'D'
+		else:
+			grade = 'F'
+		
+		status = 'PASS' if score >= 40 else 'FAIL'
+		
+		context = {
+			'exam': exam,
+			'student': student,
+			'submission': submission,
+			'total_questions': total_questions,
+			'grade': grade,
+			'status': status,
+			'faculty': user
+		}
+		
+		return render(request, 'report_card.html', context)
+		
+	except (Exam.DoesNotExist, User.DoesNotExist, Submission.DoesNotExist):
+		messages.error(request, 'Report card could not be generated.')
+		return redirect('faculty_results')
 
 @login_required
 def student_exams(request):

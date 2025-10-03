@@ -1,0 +1,313 @@
+{% extends 'faculty_base.html' %}
+
+{% block title %}{{ exam.title }} - Results{% endblock %}
+
+{% block extra_css %}
+<style>
+    .results-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    .exam-header {
+        background: linear-gradient(135deg, #2d3e50 0%, #4f8cff 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 20px rgba(44, 62, 80, 0.15);
+    }
+    
+    .exam-header h1 {
+        margin: 0 0 0.5rem 0;
+        font-size: 2rem;
+    }
+    
+    .exam-info {
+        display: flex;
+        gap: 2rem;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+        opacity: 0.9;
+    }
+    
+    .info-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        text-align: center;
+        border-top: 4px solid #4f8cff;
+    }
+    
+    .stat-icon {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2d3e50;
+        margin: 0.5rem 0;
+    }
+    
+    .stat-label {
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
+    
+    .submissions-section {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    }
+    
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+    
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #2d3e50;
+    }
+    
+    .submissions-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .submissions-table thead {
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+    }
+    
+    .submissions-table th {
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: #2d3e50;
+        border-bottom: 2px solid #e0e7ff;
+    }
+    
+    .submissions-table td {
+        padding: 1rem;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .submissions-table tbody tr:hover {
+        background: #f8fafc;
+    }
+    
+    .score-badge {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    
+    .score-excellent {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+    
+    .score-good {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+    }
+    
+    .score-average {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+    }
+    
+    .score-poor {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+    
+    .report-btn {
+        padding: 0.5rem 1rem;
+        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
+        color: white;
+        text-decoration: none;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        transition: all 0.3s;
+        display: inline-block;
+    }
+    
+    .report-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(79, 140, 255, 0.4);
+    }
+    
+    .back-btn {
+        display: inline-block;
+        padding: 0.75rem 1.5rem;
+        background: white;
+        color: #4f8cff;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 600;
+        border: 2px solid #4f8cff;
+        transition: all 0.3s;
+    }
+    
+    .back-btn:hover {
+        background: #4f8cff;
+        color: white;
+    }
+    
+    .no-submissions {
+        text-align: center;
+        padding: 3rem;
+        color: #6b7280;
+    }
+    
+    .no-submissions-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+    
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .submissions-table {
+            font-size: 0.9rem;
+        }
+        
+        .submissions-table th,
+        .submissions-table td {
+            padding: 0.75rem 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="results-container">
+    <div class="exam-header">
+        <h1>{{ exam.title }}</h1>
+        <div class="exam-info">
+            <div class="info-item">📅 {{ exam.date|date:"F d, Y" }}</div>
+            <div class="info-item">⏰ {{ exam.date|time:"H:i" }}</div>
+            <div class="info-item">⏱️ {{ exam.duration_minutes }} minutes</div>
+        </div>
+    </div>
+    
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-value">{{ stats.total_students }}</div>
+            <div class="stat-label">Total Submissions</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-value">{{ stats.average_score }}%</div>
+            <div class="stat-label">Average Score</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">🏆</div>
+            <div class="stat-value">{{ stats.highest_score }}%</div>
+            <div class="stat-label">Highest Score</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">📉</div>
+            <div class="stat-value">{{ stats.lowest_score }}%</div>
+            <div class="stat-label">Lowest Score</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <div class="stat-value">{{ stats.passed }}</div>
+            <div class="stat-label">Passed (≥40%)</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">❌</div>
+            <div class="stat-value">{{ stats.failed }}</div>
+            <div class="stat-label">Failed (<40%)</div>
+        </div>
+    </div>
+    
+    <div class="submissions-section">
+        <div class="section-header">
+            <h2 class="section-title">Student Submissions</h2>
+            <a href="{% url 'faculty_results' %}" class="back-btn">← Back to Results</a>
+        </div>
+        
+        {% if submissions %}
+        <table class="submissions-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Student Name</th>
+                    <th>Email</th>
+                    <th>Score</th>
+                    <th>Submitted On</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for submission in submissions %}
+                <tr>
+                    <td><strong>#{{ forloop.counter }}</strong></td>
+                    <td>{{ submission.student.get_full_name|default:submission.student.username }}</td>
+                    <td>{{ submission.student.email }}</td>
+                    <td>
+                        {% if submission.score >= 80 %}
+                            <span class="score-badge score-excellent">{{ submission.score|floatformat:1 }}%</span>
+                        {% elif submission.score >= 60 %}
+                            <span class="score-badge score-good">{{ submission.score|floatformat:1 }}%</span>
+                        {% elif submission.score >= 40 %}
+                            <span class="score-badge score-average">{{ submission.score|floatformat:1 }}%</span>
+                        {% else %}
+                            <span class="score-badge score-poor">{{ submission.score|floatformat:1 }}%</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ submission.submitted_on|date:"M d, Y H:i" }}</td>
+                    <td>
+                        <a href="{% url 'generate_report_card' exam.id submission.student.id %}" 
+                           class="report-btn" target="_blank">
+                            📄 Report Card
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="no-submissions">
+            <div class="no-submissions-icon">📭</div>
+            <h3>No Submissions Yet</h3>
+            <p>Students haven't submitted their exams yet</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

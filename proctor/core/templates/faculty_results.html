@@ -1,0 +1,181 @@
+{% extends 'faculty_base.html' %}
+
+{% block title %}Exam Results - Faculty Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .results-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .page-header {
+        background: linear-gradient(135deg, #2d3e50 0%, #4f8cff 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 20px rgba(44, 62, 80, 0.15);
+    }
+    
+    .page-header h1 {
+        margin: 0 0 0.5rem 0;
+        font-size: 2rem;
+    }
+    
+    .page-header p {
+        margin: 0;
+        opacity: 0.9;
+    }
+    
+    .exams-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1.5rem;
+        margin-top: 2rem;
+    }
+    
+    .exam-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        transition: transform 0.3s, box-shadow 0.3s;
+        border-left: 4px solid #4f8cff;
+    }
+    
+    .exam-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(79, 140, 255, 0.2);
+    }
+    
+    .exam-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #2d3e50;
+        margin-bottom: 0.5rem;
+    }
+    
+    .exam-date {
+        color: #6b7280;
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+        margin: 1rem 0;
+    }
+    
+    .stat-item {
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+        padding: 0.75rem;
+        border-radius: 8px;
+        text-align: center;
+    }
+    
+    .stat-label {
+        font-size: 0.8rem;
+        color: #6b7280;
+        margin-bottom: 0.25rem;
+    }
+    
+    .stat-value {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #2d3e50;
+    }
+    
+    .view-btn {
+        display: block;
+        width: 100%;
+        padding: 0.75rem;
+        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
+        color: white;
+        text-align: center;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s;
+        margin-top: 1rem;
+    }
+    
+    .view-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(79, 140, 255, 0.4);
+    }
+    
+    .no-exams {
+        text-align: center;
+        padding: 3rem;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    }
+    
+    .no-exams-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+    
+    .no-exams h3 {
+        color: #2d3e50;
+        margin-bottom: 0.5rem;
+    }
+    
+    .no-exams p {
+        color: #6b7280;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="results-container">
+    <div class="page-header">
+        <h1>📊 Exam Results</h1>
+        <p>View and analyze student performance across all your exams</p>
+    </div>
+    
+    {% if exams %}
+    <div class="exams-grid">
+        {% for exam in exams %}
+        <div class="exam-card">
+            <div class="exam-title">{{ exam.title }}</div>
+            <div class="exam-date">📅 {{ exam.date|date:"F d, Y" }} at {{ exam.date|time:"H:i" }}</div>
+            
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label">Submissions</div>
+                    <div class="stat-value">{{ exam.total_submissions }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Average Score</div>
+                    <div class="stat-value">{{ exam.average_score|floatformat:1 }}%</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Highest Score</div>
+                    <div class="stat-value">{{ exam.highest_score|floatformat:1 }}%</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Lowest Score</div>
+                    <div class="stat-value">{{ exam.lowest_score|floatformat:1 }}%</div>
+                </div>
+            </div>
+            
+            <a href="{% url 'faculty_exam_results' exam.id %}" class="view-btn">
+                View Detailed Results →
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-exams">
+        <div class="no-exams-icon">📝</div>
+        <h3>No Exams Yet</h3>
+        <p>Create your first exam to see results here</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
