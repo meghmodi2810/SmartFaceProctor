@@ -27,6 +27,8 @@ urlpatterns = [
     path('dashboard/faculty/report-card/<int:exam_id>/<int:student_id>/', views.generate_report_card, name='generate_report_card'),
     path('student/exams/', views.student_exams, name='student_exams'),
     path('student/profile/', views.student_profile, name='student_profile'),
+    path('student/password/', views.student_password_change, name='student_password_change'),
+    path('student/profile/update/', views.student_profile_update, name='student_profile_update'),
     path('student/start-exam/<int:exam_id>/', views.start_exam, name='start_exam'),
     path('student/mcq-exam/<int:exam_id>/', views.mcq_exam, name='mcq_exam'),
     path('student/start-mcq-exam/<int:exam_id>/', views.start_mcq_exam, name='start_mcq_exam'),
@@ -39,6 +41,7 @@ urlpatterns = [
     path('delete_exam/<int:exam_id>/', views.delete_exam, name='delete_exam'),
     path('faculty/edit_exam/<int:exam_id>/', views.edit_exam, name='edit_exam'),
     path('check_exam_status/<int:exam_id>/', views.check_exam_status, name='check_exam_status'),
+    path('process-frame/', views.process_frame, name='process_frame'),
     
     # Custom Admin URLs
     path('customadmin/login/', admin_views.admin_login, name='admin_login'),
@@ -58,6 +61,7 @@ urlpatterns = [
     path('customadmin/bugs/<int:bug_id>/', admin_views.admin_bug_detail, name='admin_bug_detail'),
     path('customadmin/settings/', admin_views.admin_system_settings, name='admin_system_settings'),
     path('customadmin/export/', admin_views.admin_export_data, name='admin_export_data'),
+    path('customadmin/departments/', admin_views.admin_departments, name='admin_departments'),
     
     # Session Management URLs
     path('customadmin/sessions/', session_admin_views.admin_session_monitor, name='admin_session_monitor'),

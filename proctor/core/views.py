@@ -1,8 +1,8 @@
 from django.shortcuts import render, redirect
-from django.http import StreamingHttpResponse
+from django.http import StreamingHttpResponse, JsonResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from .models import Exam, Submission, Violation
+from .models import Exam, Submission, Violation, Department
 import cv2
 import numpy as np
 from django.utils import timezone
@@ -10,8 +10,8 @@ import mediapipe as mp
 from django.contrib import messages
 import os
 import warnings
-from django.views.decorators.http import require_POST
-from django.http import JsonResponse, HttpResponseRedirect
+from django.views.decorators.http import require_POST, require_http_methods
+from django.http import HttpResponseRedirect
 from django.urls import reverse
 from .models import Exam, Question, BugReport
 from .Modules.SheetManagerModule import get_questions_from_sheet
@@ -19,6 +19,13 @@ import json
 from django.core.mail import send_mail
 from django.conf import settings
 from django.db import models
+from django.views.decorators.csrf import csrf_exempt
+from .FaceModules.DistractionDetectionModule import DistractionDetector
+import base64
+from io import BytesIO
+from PIL import Image
+
+distraction_detector = DistractionDetector()
 
 def get_client_ip(request):
 	"""Get the client's IP address"""
@@ -42,86 +49,92 @@ def home(request):
     return render(request, 'home.html')
 
 def login_view(request):
-	# Check if user is already logged in
-	if request.user.is_authenticated:
-		# Redirect based on user role
-		if request.user.role == 'Admin':
-			return redirect('admin_dashboard')
-		elif request.user.role == 'Student':
-			return redirect('student_dashboard')
-		elif request.user.role == 'Faculty':
-			return redirect('faculty_dashboard')
-	
-	if request.method == 'POST':
-		username = request.POST.get('username', '').strip()
-		password = request.POST.get('password')
-		remember_me = request.POST.get('remember_me')
-		
-		# Rate limiting check
-		login_attempts_key = f'login_attempts_{username}'
-		login_attempts = request.session.get(login_attempts_key, 0)
-		
-		if login_attempts >= 5:
-			messages.error(request, 'Too many failed login attempts. Please try again later.')
-			return render(request, 'login.html')
-		
-		user = authenticate(request, username=username, password=password)
-		if user is not None:
-			if user.is_active:
-				# Clear failed login attempts
-				if login_attempts_key in request.session:
-					del request.session[login_attempts_key]
-				
-				# Regenerate session key for security
-				request.session.cycle_key()
-				
-				login(request, user)
-				
-				# Set session expiry based on remember me
-				if remember_me:
-					request.session.set_expiry(1209600)  # 2 weeks
-				else:
-					request.session.set_expiry(1800)  # 30 minutes
-				
-				# Initialize session security data
-				import time
-				request.session['session_start'] = time.time()
-				request.session['last_activity'] = time.time()
-				request.session['user_agent'] = request.META.get('HTTP_USER_AGENT', '')
-				request.session['ip_address'] = get_client_ip(request)
-				request.session['login_count'] = request.session.get('login_count', 0) + 1
-				request.session['user_role'] = user.role
-				
-				# Add success message
-				messages.success(request, f'Welcome back, {user.first_name or user.username}!')
-				
-				# Redirect based on user role
-				if user.role == 'Admin':
-					return redirect('admin_dashboard')
-				elif user.role == 'Student':
-					return redirect('student_dashboard')
-				elif user.role == 'Faculty':
-					return redirect('faculty_dashboard')
-				else:
-					messages.error(request, 'Invalid user role')
-					logout(request)
-					return redirect('login')
-			else:
-				messages.error(request, 'Your account has been deactivated. Please contact support.')
-		else:
-			# Increment failed login attempts
-			request.session[login_attempts_key] = login_attempts + 1
-			request.session.modified = True
-			
-			remaining_attempts = 5 - (login_attempts + 1)
-			if remaining_attempts > 0:
-				messages.error(request, f'Invalid credentials. {remaining_attempts} attempts remaining.')
-			else:
-				messages.error(request, 'Too many failed attempts. Please try again later.')
-			
-		return render(request, 'login.html')
-	
-	return render(request, 'login.html')
+    # Check if user is already logged in
+    if request.user.is_authenticated:
+        # Redirect based on user role
+        if request.user.role == 'Admin':
+            return redirect('admin_dashboard')
+        elif request.user.role == 'Student':
+            if not request.user.is_profile_complete:
+                messages.info(request, 'Please complete your profile to continue.')
+                return redirect('student_profile')
+            return redirect('student_dashboard')
+        elif request.user.role == 'Faculty':
+            return redirect('faculty_dashboard')
+    
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password')
+        remember_me = request.POST.get('remember_me')
+        
+        # Rate limiting check
+        login_attempts_key = f'login_attempts_{username}'
+        login_attempts = request.session.get(login_attempts_key, 0)
+        
+        if login_attempts >= 5:
+            messages.error(request, 'Too many failed login attempts. Please try again later.')
+            return render(request, 'login.html')
+        
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            if user.is_active:
+                # Clear failed login attempts
+                if login_attempts_key in request.session:
+                    del request.session[login_attempts_key]
+                
+                # Regenerate session key for security
+                request.session.cycle_key()
+                
+                login(request, user)
+                
+                # Set session expiry based on remember me
+                if remember_me:
+                    request.session.set_expiry(1209600)  # 2 weeks
+                else:
+                    request.session.set_expiry(1800)  # 30 minutes
+                
+                # Initialize session security data
+                import time
+                request.session['session_start'] = time.time()
+                request.session['last_activity'] = time.time()
+                request.session['user_agent'] = request.META.get('HTTP_USER_AGENT', '')
+                request.session['ip_address'] = get_client_ip(request)
+                request.session['login_count'] = request.session.get('login_count', 0) + 1
+                request.session['user_role'] = user.role
+                
+                # Add success message
+                messages.success(request, f'Welcome back, {user.first_name or user.username}!')
+                
+                # Redirect based on user role
+                if user.role == 'Admin':
+                    return redirect('admin_dashboard')
+                elif user.role == 'Student':
+                    if not user.is_profile_complete:
+                        messages.info(request, 'Please complete your profile to continue.')
+                        return redirect('student_profile')
+                    return redirect('student_dashboard')
+                elif user.role == 'Faculty':
+                    return redirect('faculty_dashboard')
+                else:
+                    messages.error(request, 'Invalid user role')
+                    logout(request)
+                    return redirect('login')
+            else:
+                messages.error(request, 'Your account has been deactivated. Please contact support.')
+        else:
+            # Increment failed login attempts
+            request.session[login_attempts_key] = login_attempts + 1
+            request.session.modified = True
+            
+            remaining_attempts = 5 - (login_attempts + 1)
+            if remaining_attempts > 0:
+                messages.error(request, f'Invalid credentials. {remaining_attempts} attempts remaining.')
+            else:
+                messages.error(request, 'Too many failed attempts. Please try again later.')
+            
+        return render(request, 'login.html')
+    
+    return render(request, 'login.html')
 
 def register(request):
 	if request.method == 'POST':
@@ -505,7 +518,24 @@ def video_feed(request):
 
 @login_required
 def exam_proctoring_page(request):
-	return render(request, 'exam_proctoring.html')
+    detector = DistractionDetector()
+    exam_id = request.session.get('current_exam_id')
+    
+    try:
+        exam = Exam.objects.get(id=exam_id)
+        # Configure detector with exam settings
+        detector.set_warning_threshold(exam.warning_limit)
+        detector.set_absence_threshold(exam.absence_threshold)
+        
+        return render(request, 'exam_proctoring.html', {
+            'exam': exam,
+            'warning_limit': exam.warning_limit,
+            'absence_threshold': exam.absence_threshold
+        })
+        
+    except Exam.DoesNotExist:
+        messages.error(request, 'Exam not found.')
+        return redirect('student_exams')
 
 def logout_view(request):
 	"""Enhanced logout with proper session cleanup"""
@@ -557,7 +587,7 @@ def schedule_exam(request):
 		return HttpResponseRedirect(reverse('schedule_exam_page'))
 	
 	# If there are warnings, show them but continue
-	if validation_result['warnings']:
+	if (validation_result['warnings']):
 		warning_message = "Warnings:\n" + "\n".join(validation_result['warnings'])
 		messages.warning(request, warning_message)
 	
@@ -942,11 +972,149 @@ Smart Face Proctor System'''
 
 @login_required
 def student_profile(request):
-	user = request.user
-	if user.role != 'Student':
-		return redirect('faculty_dashboard')
-	
-	return render(request, 'student_profile.html', {'student': user})
+    user = request.user
+    if user.role != 'Student':
+        return redirect('faculty_dashboard')
+    
+    departments = Department.objects.filter(is_active=True).order_by('name')
+    
+    if request.method == 'POST':
+        # Update profile information
+        user.first_name = request.POST.get('first_name', '')
+        user.last_name = request.POST.get('last_name', '')
+        user.dob = request.POST.get('dob')
+        user.gender = request.POST.get('gender')
+        user.mobile_number = request.POST.get('mobile_number')
+        user.address = request.POST.get('address')
+        user.branch = request.POST.get('branch')
+        user.course = request.POST.get('course')
+        user.current_semester = request.POST.get('current_semester')
+        
+        # Handle department selection
+        department_id = request.POST.get('department')
+        if department_id:
+            try:
+                user.department = Department.objects.get(id=department_id, is_active=True)
+            except Department.DoesNotExist:
+                messages.error(request, 'Selected department is not valid.')
+                return redirect('student_profile')
+        
+        # Check if all required fields are filled
+        required_fields = [
+            user.first_name, user.last_name, user.dob, user.gender,
+            user.mobile_number, user.address, user.branch, user.course,
+            user.current_semester, user.department
+        ]
+        
+        if all(required_fields):
+            user.is_profile_complete = True
+            user.save()
+            messages.success(request, 'Profile updated successfully!')
+        else:
+            messages.warning(request, 'Please fill in all required fields to complete your profile.')
+    
+    context = {
+        'user': user,
+        'departments': departments,
+        'is_first_login': not user.is_profile_complete,
+    }
+    return render(request, 'student_profile.html', context)
+
+@login_required
+def student_password_change(request):
+    user = request.user
+    if user.role != 'Student':
+        return redirect('faculty_dashboard')
+    
+    if request.method == 'POST':
+        old_password = request.POST.get('old_password')
+        new_password = request.POST.get('new_password')
+        confirm_password = request.POST.get('confirm_password')
+        
+        if not user.check_password(old_password):
+            messages.error(request, 'Current password is incorrect.')
+        elif new_password != confirm_password:
+            messages.error(request, 'New passwords do not match.')
+        elif len(new_password) < 8:
+            messages.error(request, 'Password must be at least 8 characters long.')
+        else:
+            user.set_password(new_password)
+            user.save()
+            messages.success(request, 'Password changed successfully. Please login again.')
+            return redirect('login')
+    
+    return render(request, 'student_password_change.html')
+
+@login_required
+def student_profile_update(request):
+    """Handle student profile updates and password changes"""
+    user = request.user
+    if user.role != 'Student':
+        return redirect('faculty_dashboard')
+        
+    departments = Department.objects.filter(is_active=True).order_by('name')
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'update_profile':
+            # Update profile information
+            user.first_name = request.POST.get('first_name', '')
+            user.last_name = request.POST.get('last_name', '')
+            user.dob = request.POST.get('dob')
+            user.gender = request.POST.get('gender')
+            user.mobile_number = request.POST.get('mobile_number')
+            user.address = request.POST.get('address')
+            user.branch = request.POST.get('branch')
+            user.course = request.POST.get('course')
+            user.current_semester = request.POST.get('current_semester')
+            
+            # Handle department selection
+            department_id = request.POST.get('department')
+            if department_id:
+                try:
+                    user.department = Department.objects.get(id=department_id, is_active=True)
+                except Department.DoesNotExist:
+                    messages.error(request, 'Selected department is not valid.')
+                    return redirect('student_profile_update')
+            
+            # Check if all required fields are filled
+            required_fields = [
+                user.first_name, user.last_name, user.dob, user.gender,
+                user.mobile_number, user.address, user.branch, user.course,
+                user.current_semester, user.department
+            ]
+            
+            if all(required_fields):
+                user.is_profile_complete = True
+                user.save()
+                messages.success(request, 'Profile updated successfully!')
+            else:
+                messages.warning(request, 'Please fill in all required fields to complete your profile.')
+        
+        elif action == 'change_password':
+            old_password = request.POST.get('old_password')
+            new_password = request.POST.get('new_password')
+            confirm_password = request.POST.get('confirm_password')
+            
+            if not user.check_password(old_password):
+                messages.error(request, 'Current password is incorrect.')
+            elif new_password != confirm_password:
+                messages.error(request, 'New passwords do not match.')
+            elif len(new_password) < 8:
+                messages.error(request, 'Password must be at least 8 characters long.')
+            else:
+                user.set_password(new_password)
+                user.save()
+                messages.success(request, 'Password changed successfully. Please login again.')
+                return redirect('login')
+    
+    context = {
+        'user': user,
+        'departments': departments,
+        'is_first_login': not user.is_profile_complete,
+    }
+    return render(request, 'student_profile_update.html', context)
 
 @login_required
 def start_exam(request, exam_id):
@@ -1168,7 +1336,7 @@ def start_mcq_exam(request, exam_id):
 		
 		context = {
 			'exam': exam,
-			'questions': questions,
+				'questions': questions,
 			'questions_data': json.dumps(questions_data),
 			'student': user,
 			'exam_duration': exam.duration_minutes,
@@ -1198,9 +1366,7 @@ def submit_exam(request, exam_id):
 		
 		# Check if exam is still ongoing
 		current_time = timezone.now()
-		exam_end_time = exam.date + timezone.timedelta(minutes=exam.duration_minutes)
-		
-		if current_time > exam_end_time:
+		if current_time > exam.date + timezone.timedelta(minutes=exam.duration_minutes):
 			return JsonResponse({'success': False, 'error': 'Exam has ended'})
 		
 		# Check if student has already submitted
@@ -1481,3 +1647,50 @@ def check_exam_status(request, exam_id):
         
     except Exam.DoesNotExist:
         return JsonResponse({'error': 'Exam not found'}, status=404)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def process_frame(request):
+    try:
+        data = json.loads(request.body)
+        frame_data = data.get('frame')
+        
+        # Remove the data URL prefix to get the base64 string
+        frame_base64 = frame_data.split(',')[1]
+        
+        # Convert base64 to image
+        image_data = base64.b64decode(frame_base64)
+        image = Image.open(BytesIO(image_data))
+        
+        # Convert PIL image to OpenCV format
+        opencv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+        
+        # Process frame using existing face detection logic
+        face_detected = detect_face(opencv_image)
+        
+        response_data = {
+            'success': True,
+            'face_detected': face_detected,
+            'warning_message': None if face_detected else "No face detected - Please position yourself properly in front of the camera"
+        }
+        
+        return JsonResponse(response_data)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+def detect_face(frame):
+    # Use existing face detection logic from DistractionDetector
+    try:
+        from .FaceModules.DistractionDetectionModule import DistractionDetector
+        detector = DistractionDetector()
+        result = detector.detect_distraction(frame)
+        return result.get('face_detected', False)
+    except Exception:
+        # Fallback to basic face detection if module import fails
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+        return len(faces) > 0

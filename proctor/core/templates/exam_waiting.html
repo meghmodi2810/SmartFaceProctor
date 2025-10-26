@@ -5,9 +5,9 @@
 {% block extra_css %}
 <style>
     .waiting-container {
-        max-width: 600px;
+        max-width: 1000px;
         margin: 3rem auto;
-        padding: 2rem;
+        padding: 2.5rem;
         background: rgba(255, 255, 255, 0.95);
         border-radius: 20px;
         box-shadow: 0 8px 32px rgba(44, 62, 80, 0.15);
@@ -76,16 +76,17 @@
 
     .exam-details {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-        margin-bottom: 2rem;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        margin: 2rem 0;
     }
 
     .detail-card {
         background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
-        padding: 1rem;
+        padding: 1.5rem;
         border-radius: 10px;
         border-left: 4px solid #4f8cff;
+        min-width: 250px;
     }
 
     .detail-label {

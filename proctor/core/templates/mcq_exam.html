@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="camera-section mb-4">
+    <button id="initCamera" class="btn btn-primary mb-2">Initialize Camera</button>
+    <div id="cameraStatus" class="alert alert-info" style="display: none;">
+        Camera Status: <span id="statusText">Not initialized</span>
+    </div>
+    <video id="videoElement" style="width: 320px; height: 240px; display: none;" autoplay></video>
+    <canvas id="canvasElement" style="display: none;"></canvas>
+</div>
+
+<!-- Existing exam content -->
+<div class="exam-content" style="display: none;">
+    // ...existing exam content...
+</div>
+
+<script>
+let videoStream = null;
+let detector = null;
+let isProcessingFrame = false;
+let warningCount = 0;
+const maxWarnings = 3;
+
+async function initializeCamera() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const video = document.getElementById('videoElement');
+        video.srcObject = stream;
+        video.style.display = 'block';
+        videoStream = stream;
+        document.getElementById('statusText').textContent = 'Camera initialized';
+        document.getElementById('cameraStatus').style.display = 'block';
+        document.getElementById('initCamera').style.display = 'none';
+        document.querySelector('.exam-content').style.display = 'block';
+        startFrameProcessing();
+    } catch (err) {
+        alert('Error accessing camera: ' + err.message);
+    }
+}
+
+async function processFrame() {
+    if (!videoStream || isProcessingFrame) return;
+    
+    isProcessingFrame = true;
+    const video = document.getElementById('videoElement');
+    const canvas = document.getElementById('canvasElement');
+    const context = canvas.getContext('2d');
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0);
+    
+    const frame = canvas.toDataURL('image/jpeg');
+    
+    try {
+        const response = await fetch('/process-frame/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                frame: frame,
+                exam_id: {{ exam.id }}
+            })
+        });
+        
+        const result = await response.json();
+        updateStatus(result);
+    } catch (err) {
+        console.error('Error processing frame:', err);
+    }
+    
+    isProcessingFrame = false;
+}
+
+function updateStatus(result) {
+    const statusText = document.getElementById('statusText');
+    const statusDiv = document.getElementById('cameraStatus');
+    
+    if (result.is_distracted) {
+        warningCount++;
+        statusDiv.className = 'alert alert-warning';
+        statusText.textContent = `Warning ${warningCount}/${maxWarnings}: ${result.message}`;
+        
+        if (warningCount >= maxWarnings) {
+            statusDiv.className = 'alert alert-danger';
+            statusText.textContent = 'Too many warnings - exam terminated';
+            document.querySelector('form').submit();  // Submit exam
+        }
+    } else {
+        statusDiv.className = 'alert alert-success';
+        statusText.textContent = 'Student attentive';
+    }
+}
+
+function startFrameProcessing() {
+    setInterval(processFrame, 1000);  // Process frame every second
+}
+
+document.getElementById('initCamera').addEventListener('click', initializeCamera);
+</script>
+
+{% endblock %}

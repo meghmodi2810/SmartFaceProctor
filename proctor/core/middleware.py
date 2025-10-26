@@ -1,6 +1,8 @@
 from django.shortcuts import redirect
-from django.urls import reverse
+from django.urls import reverse, resolve
 from django.conf import settings
+from django.contrib import messages
+from .models import Department
 
 class LoginRequiredMiddleware:
     def __init__(self, get_response):
@@ -37,5 +39,28 @@ class LoginRequiredMiddleware:
         if not request.user.is_authenticated and request.path not in exempt_urls:
             return redirect('login')
 
+        response = self.get_response(request)
+        return response
+
+class ProfileCompletionMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if request.user.is_authenticated and request.user.role == 'Student':
+            # Exempt URLs that should be accessible even without a complete profile
+            exempt_paths = [
+                '/student/profile/update/',
+                '/logout/',
+                '/static/',
+            ]
+            
+            # Check if current path is exempt
+            is_exempt = any(request.path.startswith(path) for path in exempt_paths)
+            
+            if not request.user.is_profile_complete and not is_exempt:
+                messages.warning(request, 'Please complete your profile before continuing.')
+                return redirect('/student/profile/update/')
+        
         response = self.get_response(request)
         return response

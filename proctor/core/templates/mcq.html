@@ -138,171 +138,459 @@
         font-size: 0.9rem;
         margin-top: 0.5rem;
     }
+
+    .proctor-warnings {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+    }
+
+    .warning-counter {
+        background: rgba(255, 255, 255, 0.9);
+        padding: 10px 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        margin-bottom: 10px;
+    }
+
+    .warning-message {
+        background: rgba(255, 193, 7, 0.9);
+        color: #856404;
+        padding: 10px 20px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        display: none;
+    }
+
+    .freeze-message {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+    }
+
+    .freeze-content {
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        text-align: center;
+        max-width: 400px;
+    }
+
+    .exam-content.frozen {
+        pointer-events: none;
+        opacity: 0.5;
+    }
+
+    .camera-status {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-width: 250px;
+    }
+
+    .status-text {
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .status-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+
+    .status-indicator.active {
+        background-color: #22c55e;
+    }
+
+    .status-indicator.warning {
+        background-color: #f59e0b;
+    }
+
+    .status-indicator.error {
+        background-color: #ef4444;
+    }
+
+    .start-camera-btn {
+        background: #4f46e5;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .start-camera-btn:hover {
+        background: #4338ca;
+    }
+
+    .start-camera-btn:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+    }
+
+    #examContent {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+    #examContent.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.7);
+        z-index: 1000;
+    }
+
+    .modal-content {
+        background-color: white;
+        margin: 10% auto;
+        padding: 20px;
+        width: 80%;
+        max-width: 600px;
+        border-radius: 5px;
+        text-align: center;
+    }
+
+    #videoPreview {
+        width: 100%;
+        max-width: 480px;
+        margin: 20px auto;
+        position: relative;
+    }
+
+    #videoElement {
+        width: 100%;
+        border-radius: 5px;
+    }
+
+    #previewCanvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="exam-container">
-    <div class="exam-header">
-        <h1 class="exam-title">{{ exam.title }}</h1>
-        <div class="exam-info">
-            <span>Duration: {{ exam.duration_minutes }} minutes</span>
-            <span class="timer" id="timer">Time Remaining: Calculating...</span>
+<!-- Camera Initialization Modal -->
+<div id="cameraInitModal" class="modal" style="display: block;">
+    <div class="modal-content">
+        <h3>Camera Initialization Required</h3>
+        <div id="videoPreview">
+            <video id="videoElement" autoplay playsinline></video>
+            <canvas id="previewCanvas"></canvas>
+        </div>
+        <div class="status-container">
+            <span id="statusText">Please initialize your camera</span>
+        </div>
+        <div style="text-align: center; margin-top: 20px;">
+            <button id="startCameraBtn" class="btn btn-primary">Initialize Camera</button>
+            <button id="exitBtn" class="btn btn-secondary" style="display: none;">Start Exam</button>
         </div>
     </div>
-    
-    <form id="examForm" class="questions-list">
-        {% csrf_token %}
-        {% for question in questions %}
-        <div class="question-card">
-            <div class="question-text">{{ forloop.counter }}. {{ question.text }}</div>
-            <div class="options-list">
-                <label class="option-item">
-                    <input type="radio" name="q{{ question.id }}" value="A" class="option-radio" required>
-                    <span class="option-text">{{ question.option_a }}</span>
-                </label>
-                <label class="option-item">
-                    <input type="radio" name="q{{ question.id }}" value="B" class="option-radio" required>
-                    <span class="option-text">{{ question.option_b }}</span>
-                </label>
-                <label class="option-item">
-                    <input type="radio" name="q{{ question.id }}" value="C" class="option-radio" required>
-                    <span class="option-text">{{ question.option_c }}</span>
-                </label>
-                <label class="option-item">
-                    <input type="radio" name="q{{ question.id }}" value="D" class="option-radio" required>
-                    <span class="option-text">{{ question.option_d }}</span>
-                </label>
-            </div>
-        </div>
-        {% endfor %}
-        
-        <div class="exam-actions">
-            <div>
-                <span id="answeredCount">0</span> of {{ questions|length }} questions answered
-            </div>
-            <button type="submit" class="submit-btn" id="submitBtn" disabled>Submit Exam</button>
-        </div>
-    </form>
 </div>
 
-<script>
-// Get exam end time from server
-const examEndTime = new Date('{{ exam_end_time }}');
+<!-- Exam Content (hidden by default) -->
+<div id="examContent" style="display: none;">
+    <div class="exam-container">
+        <div class="camera-status">
+            <div id="cameraFeed">
+                <video id="examVideo" autoplay playsinline></video>
+            </div>
+            <div class="status-text">
+                <span id="examStatusText">Camera status: Active</span>
+            </div>
+        </div>
 
-// Update timer every second
-function updateTimer() {
-    const now = new Date();
-    const timeLeft = examEndTime - now;
-    
-    if (timeLeft <= 0) {
-        clearInterval(timerInterval);
-        document.getElementById('timer').textContent = 'Time\'s up!';
-        document.getElementById('submitBtn').disabled = true;
-        submitExam(true); // Auto-submit when time expires
-        return;
-    }
-    
-    const minutes = Math.floor(timeLeft / 60000);
-    const seconds = Math.floor((timeLeft % 60000) / 1000);
-    document.getElementById('timer').textContent = 
-        `Time Remaining: ${minutes}m ${seconds}s`;
+        <div class="proctor-warnings">
+            <div class="warning-counter">
+                <span>Warnings: <span id="warningCount">0</span>/{{ exam.warning_limit }}</span>
+            </div>
+            <div id="warningMessage" class="warning-message"></div>
+            <div id="freezeMessage" class="freeze-message" style="display: none;">
+                <div class="freeze-content">
+                    <h3>⚠️ Exam Frozen</h3>
+                    <p>Due to multiple warnings, your exam has been temporarily frozen.</p>
+                    <p>Time remaining: <span id="freezeTimer">5:00</span></p>
+                    <p>Please ensure your face is visible to the camera.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="exam-header">
+            <h1 class="exam-title">{{ exam.title }}</h1>
+            <div class="exam-info">
+                <span>Duration: {{ exam.duration_minutes }} minutes</span>
+                <span class="timer" id="timer">Time Remaining: Calculating...</span>
+            </div>
+        </div>
+        
+        <form id="examForm" class="questions-list">
+            {% csrf_token %}
+            {% for question in questions %}
+            <div class="question-card">
+                <div class="question-text">{{ forloop.counter }}. {{ question.text }}</div>
+                <div class="options-list">
+                    <label class="option-item">
+                        <input type="radio" name="q{{ question.id }}" value="A" class="option-radio" required>
+                        <span class="option-text">{{ question.option_a }}</span>
+                    </label>
+                    <label class="option-item">
+                        <input type="radio" name="q{{ question.id }}" value="B" class="option-radio" required>
+                        <span class="option-text">{{ question.option_b }}</span>
+                    </label>
+                    <label class="option-item">
+                        <input type="radio" name="q{{ question.id }}" value="C" class="option-radio" required>
+                        <span class="option-text">{{ question.option_c }}</span>
+                    </label>
+                    <label class="option-item">
+                        <input type="radio" name="q{{ question.id }}" value="D" class="option-radio" required>
+                        <span class="option-text">{{ question.option_d }}</span>
+                    </label>
+                </div>
+            </div>
+            {% endfor %}
+            
+            <div class="exam-actions">
+                <div>
+                    <span id="answeredCount">0</span> of {{ questions|length }} questions answered
+                </div>
+                <button type="submit" class="submit-btn" id="submitBtn" disabled>Submit Exam</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let isCameraInitialized = false;
+let isExamActive = false;
+let examStream = null;
+
+// Get DOM elements
+const modal = document.getElementById('cameraInitModal');
+console.log('Modal element:', modal);
+
+const examContent = document.getElementById('examContent');
+console.log('Exam content element:', examContent);
+
+const startButton = document.getElementById('startCameraBtn');
+console.log('Start button element:', startButton);
+
+const exitBtn = document.getElementById('exitBtn');
+console.log('Exit button element:', exitBtn);
+
+const statusText = document.getElementById('statusText');
+console.log('Status text element:', statusText);
+
+const video = document.getElementById('videoElement');
+console.log('Video element:', video);
+
+const examVideo = document.getElementById('examVideo');
+console.log('Exam video element:', examVideo);
+
+const canvas = document.getElementById('previewCanvas');
+console.log('Canvas element:', canvas);
+
+const ctx = canvas.getContext('2d');
+console.log('Canvas context:', ctx);
+
+// Add event listeners
+if (startButton) {
+    console.log('Adding click listener to start button');
+    startButton.addEventListener('click', function(e) {
+        console.log('Start button clicked');
+        e.preventDefault();
+        initializeCamera();
+    });
+} else {
+    console.error('Start button not found!');
 }
 
-// Start timer
-const timerInterval = setInterval(updateTimer, 1000);
-updateTimer();
-
-// Handle radio button changes
-document.querySelectorAll('.option-radio').forEach(radio => {
-    radio.addEventListener('change', function() {
-        // Update selected state
-        document.querySelectorAll(`[name="${this.name}"]`).forEach(r => {
-            r.closest('.option-item').classList.remove('selected');
-        });
-        this.closest('.option-item').classList.add('selected');
-        
-        // Update answered count
-        const answeredCount = document.querySelectorAll('.option-radio:checked').length;
-        document.getElementById('answeredCount').textContent = answeredCount;
-        
-        // Enable submit button if all questions are answered
-        document.getElementById('submitBtn').disabled = 
-            answeredCount !== {{ questions|length }};
+if (exitBtn) {
+    console.log('Adding click listener to exit button');
+    exitBtn.addEventListener('click', function(e) {
+        console.log('Exit button clicked');
+        e.preventDefault();
+        startExam();
     });
-});
+} else {
+    console.error('Exit button not found!');
+}
 
-// Function to submit exam
-async function submitExam(autoSubmit = false) {
-    const answers = {};
-    document.querySelectorAll('.option-radio:checked').forEach(radio => {
-        const questionId = radio.name.substring(1);
-        answers[questionId] = radio.value;
-    });
+async function initializeCamera() {
+    console.log('Initializing camera...');
+    startButton.disabled = true;
+    statusText.textContent = 'Initializing camera...';
     
     try {
-        const response = await fetch('/student/submit-exam/{{ exam.id }}/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            },
-            body: JSON.stringify({ answers })
+        console.log('Requesting camera access...');
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { 
+                width: 640,
+                height: 480,
+                facingMode: 'user'
+            } 
         });
+        console.log('Camera access granted:', stream);
         
-        const data = await response.json();
-        if (data.success) {
-            // Clear saved answers from localStorage
-            localStorage.removeItem('exam_{{ exam.id }}_answers');
-            window.location.href = `/student/exam-results/{{ exam.id }}/`;
-        } else {
-            alert('Error submitting exam: ' + data.error);
-        }
-    } catch (error) {
-        alert('Error submitting exam: ' + error.message);
+        video.srcObject = stream;
+        examStream = stream; // Save stream for exam video
+        console.log('Stream set to video element');
+
+        video.onloadedmetadata = function() {
+            console.log('Video metadata loaded');
+            video.play().then(() => {
+                console.log('Video playback started');
+                // Start face detection preview
+                startPreviewDetection();
+                
+                statusText.textContent = 'Camera initialized successfully';
+                startButton.style.display = 'none';
+                exitBtn.style.display = 'inline-block';
+                isCameraInitialized = true;
+            }).catch(err => {
+                console.error('Error starting video playback:', err);
+                statusText.textContent = 'Error starting video: ' + err.message;
+                startButton.disabled = false;
+            });
+        };
+
+        video.onerror = function(err) {
+            console.error('Video element error:', err);
+            statusText.textContent = 'Video error: ' + err.message;
+            startButton.disabled = false;
+        };
+        
+    } catch (err) {
+        console.error('Error accessing camera:', err);
+        statusText.textContent = 'Camera access denied - ' + err.message;
+        startButton.disabled = false;
     }
 }
 
-// Handle form submission
-document.getElementById('examForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
+function startPreviewDetection() {
+    console.log('Starting preview detection...');
+    console.log('Video dimensions:', video.videoWidth, video.videoHeight);
     
-    if (!confirm('Are you sure you want to submit your exam?')) {
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    
+    setInterval(() => {
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+            console.log('Processing video frame...');
+            ctx.drawImage(video, 0, 0);
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+            
+            fetch('/process-frame/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    frame: imageData,
+                    exam_id: '{{ exam.id }}'
+                })
+            })
+            .then(response => {
+                console.log('Frame processing response:', response);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Frame processing data:', data);
+                updatePreviewStatus(data);
+            })
+            .catch(error => {
+                console.error('Error processing frame:', error);
+                statusText.textContent = 'Error processing video frame: ' + error.message;
+            });
+        } else {
+            console.log('Video not ready, state:', video.readyState);
+        }
+    }, 1000);
+}
+
+function updatePreviewStatus(data) {
+    if (data.warning_message) {
+        statusText.textContent = data.warning_message;
+        statusText.style.color = 'red';
+        exitBtn.disabled = true;
+    } else {
+        statusText.textContent = 'Face detected - Looking good!';
+        statusText.style.color = 'green';
+        exitBtn.disabled = false;
+    }
+}
+
+function startExam() {
+    if (!isCameraInitialized) {
+        alert('Please initialize your camera first');
         return;
     }
     
-    await submitExam(false);
-});
+    // Set up exam video feed
+    examVideo.srcObject = examStream;
+    
+    modal.style.display = 'none';
+    examContent.style.display = 'block';
+    isExamActive = true;
+    startProctoring();
+}
 
-// Save answers periodically
-setInterval(() => {
-    const answers = {};
-    document.querySelectorAll('.option-radio:checked').forEach(radio => {
-        const questionId = radio.name.substring(1);
-        answers[questionId] = radio.value;
-    });
-    localStorage.setItem('exam_{{ exam.id }}_answers', JSON.stringify(answers));
-}, 5000);
-
-// Load saved answers
-window.addEventListener('load', () => {
-    const savedAnswers = localStorage.getItem('exam_{{ exam.id }}_answers');
-    if (savedAnswers) {
-        const answers = JSON.parse(savedAnswers);
-        Object.entries(answers).forEach(([questionId, value]) => {
-            const radio = document.querySelector(`[name="q${questionId}"][value="${value}"]`);
-            if (radio) {
-                radio.checked = true;
-                radio.closest('.option-item').classList.add('selected');
-            }
-        });
-        
-        // Update answered count
-        const answeredCount = document.querySelectorAll('.option-radio:checked').length;
-        document.getElementById('answeredCount').textContent = answeredCount;
-        document.getElementById('submitBtn').disabled = 
-            answeredCount !== {{ questions|length }};
+// Don't allow form submission unless camera is active
+document.getElementById('examForm').addEventListener('submit', function(e) {
+    if (!isExamActive) {
+        e.preventDefault();
+        alert('Please initialize the camera before submitting the exam.');
     }
 });
+
+// Prevent leaving the page accidentally
+window.onbeforeunload = function() {
+    if (isExamActive) {
+        return "Are you sure you want to leave? This will end your exam session.";
+    }
+};
+
+// Helper function to get CSRF token
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+}
 </script>
 {% endblock %}

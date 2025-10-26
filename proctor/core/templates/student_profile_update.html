@@ -1,0 +1,169 @@
+{% extends 'student_base.html' %}
+
+{% block title %}Update Profile{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    {% if is_first_login %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i>
+        Welcome! Please complete your profile before continuing.
+    </div>
+    {% endif %}
+
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="row">
+        <!-- Profile Update Form -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-user-edit me-2"></i>Profile Information</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_profile">
+                        
+                        <div class="row">
+                            <!-- Personal Information -->
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">First Name<span class="text-danger">*</span></label>
+                                <input type="text" name="first_name" class="form-control" value="{{ user.first_name }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Last Name<span class="text-danger">*</span></label>
+                                <input type="text" name="last_name" class="form-control" value="{{ user.last_name }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Date of Birth<span class="text-danger">*</span></label>
+                                <input type="date" name="dob" class="form-control" value="{{ user.dob|date:'Y-m-d' }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Gender<span class="text-danger">*</span></label>
+                                <select name="gender" class="form-select" required>
+                                    <option value="">Select Gender</option>
+                                    <option value="M" {% if user.gender == 'M' %}selected{% endif %}>Male</option>
+                                    <option value="F" {% if user.gender == 'F' %}selected{% endif %}>Female</option>
+                                    <option value="O" {% if user.gender == 'O' %}selected{% endif %}>Other</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Mobile Number<span class="text-danger">*</span></label>
+                                <input type="tel" name="mobile_number" class="form-control" value="{{ user.mobile_number }}" required>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label class="form-label">Address<span class="text-danger">*</span></label>
+                                <textarea name="address" class="form-control" rows="3" required>{{ user.address }}</textarea>
+                            </div>
+                            
+                            <!-- Academic Information -->
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Branch<span class="text-danger">*</span></label>
+                                <input type="text" name="branch" class="form-control" value="{{ user.branch }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Course<span class="text-danger">*</span></label>
+                                <input type="text" name="course" class="form-control" value="{{ user.course }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Department<span class="text-danger">*</span></label>
+                                <select name="department" class="form-select" required>
+                                    <option value="">Select Department</option>
+                                    {% for dept in departments %}
+                                    <option value="{{ dept.id }}" {% if user.department_id == dept.id %}selected{% endif %}>
+                                        {{ dept.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Current Semester<span class="text-danger">*</span></label>
+                                <input type="number" name="current_semester" class="form-control" min="1" max="8" value="{{ user.current_semester }}" required>
+                            </div>
+                        </div>
+
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Update Profile
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Password Change Form -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-key me-2"></i>Change Password</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="change_password">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Current Password<span class="text-danger">*</span></label>
+                            <input type="password" name="old_password" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">New Password<span class="text-danger">*</span></label>
+                            <input type="password" name="new_password" class="form-control" 
+                                   pattern=".{8,}" title="Password must be at least 8 characters long" required>
+                            <div class="form-text">Must be at least 8 characters long</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Confirm New Password<span class="text-danger">*</span></label>
+                            <input type="password" name="confirm_password" class="form-control" required>
+                        </div>
+
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-key me-2"></i>Change Password
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+// Form validation
+(function() {
+    'use strict';
+    var forms = document.querySelectorAll('.needs-validation');
+    Array.prototype.slice.call(forms).forEach(function(form) {
+        form.addEventListener('submit', function(event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+})();
+
+// Password match validation
+document.querySelector('input[name="confirm_password"]').addEventListener('input', function(e) {
+    const newPassword = document.querySelector('input[name="new_password"]').value;
+    if (this.value !== newPassword) {
+        this.setCustomValidity('Passwords do not match');
+    } else {
+        this.setCustomValidity('');
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

@@ -49,17 +49,10 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'core.session_middleware.SessionSecurityMiddleware',  # Enhanced session security (after auth)
-    'core.session_middleware.ExamSessionMiddleware',  # Exam-specific session handling
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'core.middleware.LoginRequiredMiddleware',  # Existing middleware
-    'core.admin_middleware.AdminSecurityMiddleware',  # Admin security
-    'core.admin_middleware.AdminRateLimitMiddleware',  # Admin rate limiting
-    'core.admin_middleware.AdminAuditMiddleware',  # Admin audit logging
-    'core.admin_middleware.AdminIPWhitelistMiddleware',  # Admin IP whitelist
-    'core.admin_middleware.AdminMaintenanceModeMiddleware',  # Admin maintenance mode
-    'core.session_middleware.SessionCleanupMiddleware',  # Session cleanup
+    'core.middleware.LoginRequiredMiddleware',
+    'core.middleware.ProfileCompletionMiddleware',  # Add profile completion check
 ]
 
 

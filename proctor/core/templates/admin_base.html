@@ -140,6 +140,12 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a href="{% url 'admin_departments' %}" class="nav-link {% if 'department' in request.resolver_match.url_name %}active{% endif %}">
+                    <i class="fas fa-building"></i>
+                    Departments
+                </a>
+            </li>
+            <li class="nav-item">
                 <a href="{% url 'admin_exams' %}" class="nav-link {% if 'exam' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="fas fa-clipboard-list"></i>
                     Exam Management

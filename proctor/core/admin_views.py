@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 import json
 import csv
 
-from .models import User, Exam, Question, Submission, Violation, BugReport, PasswordResetOTP, ExamAssignment
+from .models import User, Exam, Question, Submission, Violation, BugReport, PasswordResetOTP, ExamAssignment, Department
 from .Modules.send_email_using_sheets import SmartFaceProctorMailer
 from .views import get_client_ip
 
@@ -105,6 +105,11 @@ def admin_dashboard(request):
     total_faculty = User.objects.filter(role='Faculty').count()
     total_admins = User.objects.filter(role='Admin').count()
     
+    # Department statistics
+    total_departments = Department.objects.count()
+    active_departments = Department.objects.filter(is_active=True).count()
+    recent_departments = Department.objects.all().order_by('-created_at')[:5]
+    
     total_exams = Exam.objects.count()
     active_exams = Exam.objects.filter(
         date__lte=timezone.now(),
@@ -128,6 +133,8 @@ def admin_dashboard(request):
             'total_students': total_students,
             'total_faculty': total_faculty,
             'total_admins': total_admins,
+            'total_departments': total_departments,
+            'active_departments': active_departments,
             'total_exams': total_exams,
             'active_exams': active_exams,
             'total_submissions': total_submissions,
@@ -138,6 +145,8 @@ def admin_dashboard(request):
         'recent_exams': recent_exams,
         'recent_violations': recent_violations,
         'recent_bugs': recent_bugs,
+        'recent_departments': recent_departments,
+        'now': timezone.now(),
     }
     return render(request, 'admindash.html', context)
 
@@ -772,3 +781,53 @@ def admin_logout(request):
         messages.success(request, f'Admin {admin_name} logged out successfully.')
     
     return redirect('admin_login')
+
+
+@admin_required
+def admin_departments(request):
+    """Manage departments"""
+    departments = Department.objects.all().order_by('name')
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'add':
+            name = request.POST.get('name')
+            if name:
+                Department.objects.create(name=name)
+                messages.success(request, f'Department "{name}" added successfully.')
+            else:
+                messages.error(request, 'Department name is required.')
+        
+        elif action == 'delete':
+            dept_id = request.POST.get('department_id')
+            if dept_id:
+                try:
+                    dept = Department.objects.get(id=dept_id)
+                    # Check if department has any users
+                    if User.objects.filter(department=dept).exists():
+                        dept.is_active = False
+                        dept.save()
+                        messages.warning(request, f'Department "{dept.name}" has been deactivated as it has associated users.')
+                    else:
+                        dept.delete()
+                        messages.success(request, f'Department "{dept.name}" deleted successfully.')
+                except Department.DoesNotExist:
+                    messages.error(request, 'Department not found.')
+        
+        elif action == 'toggle':
+            dept_id = request.POST.get('department_id')
+            if dept_id:
+                try:
+                    dept = Department.objects.get(id=dept_id)
+                    dept.is_active = not dept.is_active
+                    dept.save()
+                    status = 'activated' if dept.is_active else 'deactivated'
+                    messages.success(request, f'Department "{dept.name}" {status} successfully.')
+                except Department.DoesNotExist:
+                    messages.error(request, 'Department not found.')
+    
+    return render(request, 'admin_departments.html', {
+        'admin': request.user,
+        'departments': departments
+    })

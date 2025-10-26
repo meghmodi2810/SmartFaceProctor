@@ -1,5 +1,14 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.utils import timezone
+
+class Department(models.Model):
+    name = models.CharField(max_length=100)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
 
 class User(AbstractUser):
     ROLE_CHOICES = (
@@ -7,8 +16,22 @@ class User(AbstractUser):
         ('Faculty', 'Faculty'),
         ('Admin', 'Admin'),
     )
+    GENDER_CHOICES = (
+        ('M', 'Male'),
+        ('F', 'Female'),
+        ('O', 'Other')
+    )
     role = models.CharField(max_length=10, choices=ROLE_CHOICES)
     email = models.EmailField(unique=True)
+    dob = models.DateField(null=True, blank=True)
+    gender = models.CharField(max_length=1, choices=GENDER_CHOICES, null=True, blank=True)
+    mobile_number = models.CharField(max_length=15, null=True, blank=True)
+    address = models.TextField(null=True, blank=True)
+    branch = models.CharField(max_length=100, null=True, blank=True)
+    course = models.CharField(max_length=100, null=True, blank=True)
+    department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
+    current_semester = models.IntegerField(null=True, blank=True)
+    is_profile_complete = models.BooleanField(default=False)
 
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = ['email']
@@ -25,9 +48,17 @@ class Exam(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'role': 'Faculty'})
     sheet_url = models.URLField(blank=True, null=True)
     is_selective = models.BooleanField(default=False, help_text="If True, only assigned students can take this exam")
+    warning_limit = models.IntegerField(default=3)
+    absence_threshold = models.IntegerField(default=10)  # seconds before counting as absent
 
     def __str__(self):
         return f"{self.title} on {self.date.strftime('%d-%m-%Y %H:%M')}"
+
+    @property
+    def is_ongoing(self):
+        now = timezone.now()
+        end_time = self.date + timezone.timedelta(minutes=self.duration_minutes)
+        return self.date <= now <= end_time
 
 
 class ExamAssignment(models.Model):
