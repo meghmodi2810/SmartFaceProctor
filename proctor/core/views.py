@@ -538,28 +538,39 @@ def exam_proctoring_page(request):
         return redirect('student_exams')
 
 def logout_view(request):
-	"""Enhanced logout with proper session cleanup"""
-	if request.user.is_authenticated:
-		# Log the logout activity
-		user_name = request.user.username
-		user_role = request.user.role
-		
-		# Clear session data
-		request.session.flush()  # This removes all session data and regenerates session key
-		
-		# Perform logout
-		logout(request)
-		
-		# Add logout message
-		messages.success(request, f'You have been logged out successfully. Thank you, {user_name}!')
-		
-		# Redirect based on role for different login pages if needed
-		if user_role == 'Admin':
-			return redirect('admin_login')
-		else:
-			return redirect('login')
-	else:
-		return redirect('login')
+    """Enhanced logout with proper session cleanup"""
+    if request.user.is_authenticated:
+        # Stop exam monitoring if active
+        if request.session.get('monitoring_active'):
+            try:
+                from .FaceModules.exam_monitor import ExamMonitor
+                exam_id = request.session.get('active_exam_id')
+                if (exam_id):
+                    monitor = ExamMonitor.get_instance(request.user.id, exam_id)
+                    monitor.stop_monitoring()
+            except Exception:
+                pass  # Ensure logout continues even if monitoring cleanup fails
+        
+        # Log the logout activity
+        user_name = request.user.username
+        user_role = request.user.role
+        
+        # Clear session data
+        request.session.flush()  # This removes all session data and regenerates session key
+        
+        # Perform logout
+        logout(request)
+        
+        # Add logout message
+        messages.success(request, f'You have been logged out successfully. Thank you, {user_name}!')
+        
+        # Redirect based on role for different login pages if needed
+        if user_role == 'Admin':
+            return redirect('admin_login')
+        else:
+            return redirect('login')
+    else:
+        return redirect('login')
 
 @login_required
 @require_POST
@@ -1264,151 +1275,155 @@ def mcq_exam(request, exam_id):
 
 @login_required
 def start_mcq_exam(request, exam_id):
-	user = request.user
-	if user.role != 'Student':
-		return redirect('faculty_dashboard')
-	
-	try:
-		import json
-		exam = Exam.objects.get(id=exam_id)
-		questions = Question.objects.filter(exam=exam).order_by('id')
-		
-		# Check exam status
-		current_time = timezone.now()
-		exam_end_time = exam.date + timezone.timedelta(minutes=exam.duration_minutes)
-		
-		# Debug logging
-		print(f"=== START MCQ EXAM DEBUG ===")
-		print(f"Current time: {current_time}")
-		print(f"Exam start time: {exam.date}")
-		print(f"Exam end time: {exam_end_time}")
-		print(f"Time difference: {(current_time - exam.date).total_seconds()} seconds")
-		print(f"Has started: {current_time >= exam.date}")
-		print(f"Has ended: {current_time > exam_end_time}")
-		
-		# Check if exam has ended
-		if current_time > exam_end_time:
-			print(f"Exam ended - redirecting to student_exams")
-			messages.error(request, 'This exam has ended.')
-			return redirect('student_exams')
-		
-		# Check if exam hasn't started yet (with no buffer to avoid timing issues)
-		if current_time < exam.date:
-			print(f"Exam not started yet - showing waiting page")
-			# Instead of redirecting, render the waiting page directly
-			context = {
-				'exam': exam,
-				'exam_start_iso': exam.date.isoformat(),
-				'questions_count': questions.count(),
-				'student': user
-			}
-			return render(request, 'exam_waiting.html', context)
-		
-		# Check if student has already submitted
-		existing_submission = Submission.objects.filter(student=user, exam=exam).first()
-		if existing_submission:
-			print(f"Student already submitted - redirecting to results")
-			messages.error(request, 'You have already submitted this exam.')
-			return redirect('exam_results', exam_id=exam_id)
-		
-		# Check if exam has questions
-		if not questions.exists():
-			print(f"No questions available - redirecting to student_exams")
-			messages.error(request, 'This exam has no questions available.')
-			return redirect('student_exams')
-		
-		print(f"All checks passed - rendering MCQ exam")
-		
-		# Prepare questions data for JavaScript (JSON)
-		questions_data = []
-		for question in questions:
-			questions_data.append({
-				'id': question.id,
-				'text': question.text,
-				'options': [
-					question.option_a,
-					question.option_b,
-					question.option_c,
-					question.option_d
-				],
-				'correct_answer': question.answer
-			})
-		
-		context = {
-			'exam': exam,
-				'questions': questions,
-			'questions_data': json.dumps(questions_data),
-			'student': user,
-			'exam_duration': exam.duration_minutes,
-			'exam_end_time': exam_end_time.isoformat()
-		}
-		
-		return render(request, 'mcq.html', context)
-		
-	except Exam.DoesNotExist:
-		messages.error(request, 'Exam not found.')
-		return redirect('student_exams')
+    user = request.user
+    if user.role != 'Student':
+        return redirect('faculty_dashboard')
+    
+    try:
+        import json
+        exam = Exam.objects.get(id=exam_id)
+        questions = Question.objects.filter(exam=exam).order_by('id')
+        
+        # Check exam status
+        current_time = timezone.now()
+        exam_end_time = exam.date + timezone.timedelta(minutes=exam.duration_minutes)
+        
+        # Check if exam has ended
+        if current_time > exam_end_time:
+            messages.error(request, 'This exam has ended.')
+            return redirect('student_exams')
+        
+        # Check if exam hasn't started yet
+        if current_time < exam.date:
+            context = {
+                'exam': exam,
+                'exam_start_iso': exam.date.isoformat(),
+                'questions_count': questions.count(),
+                'student': user
+            }
+            return render(request, 'exam_waiting.html', context)
+        
+        # Check if student has already submitted
+        existing_submission = Submission.objects.filter(student=user, exam=exam).first()
+        if existing_submission:
+            messages.error(request, 'You have already submitted this exam.')
+            return redirect('exam_results', exam_id=exam_id)
+        
+        # Check if exam has questions
+        if not questions.exists():
+            messages.error(request, 'This exam has no questions available.')
+            return redirect('student_exams')
+
+        # Initialize exam monitoring
+        from .FaceModules.exam_monitor import ExamMonitor
+        monitor = ExamMonitor.get_instance(user.id, exam_id)
+        monitor.start_monitoring()
+        
+        # Store monitoring session info in user's session
+        request.session['active_exam_id'] = exam_id
+        request.session['monitoring_active'] = True
+        
+        # Prepare questions data for JavaScript
+        questions_data = []
+        for question in questions:
+            questions_data.append({
+                'id': question.id,
+                'text': question.text,
+                'options': [
+                    question.option_a,
+                    question.option_b,
+                    question.option_c,
+                    question.option_d
+                ],
+                'correct_answer': question.answer
+            })
+        
+        context = {
+            'exam': exam,
+            'questions': questions,
+            'questions_data': json.dumps(questions_data),
+            'student': user,
+            'exam_duration': exam.duration_minutes,
+            'exam_end_time': exam_end_time.isoformat()
+        }
+        
+        return render(request, 'mcq.html', context)
+        
+    except Exam.DoesNotExist:
+        messages.error(request, 'Exam not found.')
+        return redirect('student_exams')
 
 @login_required
 def submit_exam(request, exam_id):
-	if request.method != 'POST':
-		return JsonResponse({'success': False, 'error': 'Invalid request method'})
-	
-	user = request.user
-	if user.role != 'Student':
-		return JsonResponse({'success': False, 'error': 'Unauthorized'})
-	
-	try:
-		import json
-		data = json.loads(request.body)
-		
-		exam = Exam.objects.get(id=exam_id)
-		
-		# Check if exam is still ongoing
-		current_time = timezone.now()
-		if current_time > exam.date + timezone.timedelta(minutes=exam.duration_minutes):
-			return JsonResponse({'success': False, 'error': 'Exam has ended'})
-		
-		# Check if student has already submitted
-		existing_submission = Submission.objects.filter(student=user, exam=exam).first()
-		if existing_submission:
-			return JsonResponse({'success': False, 'error': 'You have already submitted this exam'})
-		
-		# Calculate score based on correct answers
-		answers = data.get('answers', {})
-		questions = Question.objects.filter(exam=exam)
-		correct_count = 0
-		total_questions = questions.count()
-		
-		for question in questions:
-			student_answer = answers.get(str(question.id), '')
-			if student_answer == question.answer:
-				correct_count += 1
-		
-		# Calculate percentage score
-		score = (correct_count / total_questions * 100) if total_questions > 0 else 0
-		
-		# Create submission
-		submission = Submission.objects.create(
-			exam=exam,
-			student=user,
-			score=score
-		)
-		
-		return JsonResponse({
-			'success': True, 
-			'submission_id': submission.id,
-			'score': score,
-			'correct_count': correct_count,
-			'total_questions': total_questions
-		})
-		
-	except Exam.DoesNotExist:
-		return JsonResponse({'success': False, 'error': 'Exam not found'})
-	except json.JSONDecodeError:
-		return JsonResponse({'success': False, 'error': 'Invalid JSON data'})
-	except Exception as e:
-		return JsonResponse({'success': False, 'error': str(e)})
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'})
+    
+    user = request.user
+    if user.role != 'Student':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'})
+    
+    try:
+        import json
+        data = json.loads(request.body)
+        
+        exam = Exam.objects.get(id=exam_id)
+        
+        # Check if exam is still ongoing
+        current_time = timezone.now()
+        if current_time > exam.date + timezone.timedelta(minutes=exam.duration_minutes):
+            return JsonResponse({'success': False, 'error': 'Exam has ended'})
+        
+        # Check if student has already submitted
+        existing_submission = Submission.objects.filter(student=user, exam=exam).first()
+        if existing_submission:
+            return JsonResponse({'success': False, 'error': 'You have already submitted this exam'})
+        
+        # Calculate score based on correct answers
+        answers = data.get('answers', {})
+        questions = Question.objects.filter(exam=exam)
+        correct_count = 0
+        total_questions = questions.count()
+        
+        for question in questions:
+            student_answer = answers.get(str(question.id), '')
+            if student_answer == question.answer:
+                correct_count += 1
+        
+        # Calculate percentage score
+        score = (correct_count / total_questions * 100) if total_questions > 0 else 0
+        
+        # Create submission
+        submission = Submission.objects.create(
+            exam=exam,
+            student=user,
+            score=score
+        )
+
+        # Stop the exam monitoring
+        from .FaceModules.exam_monitor import ExamMonitor
+        monitor = ExamMonitor.get_instance(user.id, exam_id)
+        monitor.stop_monitoring()
+        
+        # Clear monitoring session data
+        if 'active_exam_id' in request.session:
+            del request.session['active_exam_id']
+        if 'monitoring_active' in request.session:
+            del request.session['monitoring_active']
+        
+        return JsonResponse({
+            'success': True, 
+            'submission_id': submission.id,
+            'score': score,
+            'correct_count': correct_count,
+            'total_questions': total_questions
+        })
+        
+    except Exam.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Exam not found'})
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON data'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
 
 def test_otp_system(request):
 	"""Test view to debug OTP system"""
@@ -1654,7 +1669,14 @@ def process_frame(request):
     try:
         data = json.loads(request.body)
         frame_data = data.get('frame')
+        exam_id = data.get('exam_id')
         
+        if not frame_data:
+            return JsonResponse({
+                'success': False,
+                'error': 'No frame data provided'
+            }, status=400)
+
         # Remove the data URL prefix to get the base64 string
         frame_base64 = frame_data.split(',')[1]
         
@@ -1665,16 +1687,42 @@ def process_frame(request):
         # Convert PIL image to OpenCV format
         opencv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
         
-        # Process frame using existing face detection logic
-        face_detected = detect_face(opencv_image)
+        # Process frame using DistractionDetector
+        detector = DistractionDetector()
+        if exam_id:
+            try:
+                exam = Exam.objects.get(id=exam_id)
+                detector.set_warning_threshold(exam.warning_limit)
+                detector.set_absence_threshold(exam.absence_threshold)
+            except Exam.DoesNotExist:
+                pass
+
+        result = detector.detect_distraction(opencv_image)
         
+        # Prepare response data
         response_data = {
             'success': True,
-            'face_detected': face_detected,
-            'warning_message': None if face_detected else "No face detected - Please position yourself properly in front of the camera"
+            'face_detected': result['face_detected'],
+            'warning_message': result['warning_message'] if result['warning_message'] else None,
+            'warning_count': result['warning_count'],
+            'is_frozen': result['is_frozen']
         }
         
+        # Add freeze time if exam is frozen
+        if result['is_frozen'] and result.get('freeze_time_left') is not None:
+            response_data['freeze_time_left'] = result['freeze_time_left']
+        
+        # Record violation if there's a warning
+        if exam_id and result['warning_message'] and request.user.is_authenticated:
+            violation_type = 'Face Missing' if not result['face_detected'] else 'Distraction'
+            Violation.objects.create(
+                exam_id=exam_id,
+                student=request.user,
+                type=violation_type
+            )
+        
         return JsonResponse(response_data)
+        
     except Exception as e:
         return JsonResponse({
             'success': False,

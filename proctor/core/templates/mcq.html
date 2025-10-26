@@ -195,39 +195,48 @@
         right: 10px;
         z-index: 1000;
         background: rgba(255, 255, 255, 0.95);
-        padding: 15px;
+        padding: 10px;
         border-radius: 8px;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        min-width: 250px;
+        width: 220px;
+    }
+
+    #cameraFeed {
+        position: relative;
+        width: 200px;
+        height: 150px;
+        overflow: hidden;
+        border-radius: 6px;
+        margin-bottom: 8px;
+    }
+
+    #examVideo {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
     }
 
     .status-text {
-        font-weight: 500;
-        display: flex;
-        align-items: center;
-        gap: 8px;
+        font-size: 0.85rem;
+        padding: 5px;
+        border-radius: 4px;
+        margin-top: 5px;
+        text-align: center;
     }
 
-    .status-indicator {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        display: inline-block;
+    .status-text.success {
+        background-color: #d1fae5;
+        color: #065f46;
     }
 
-    .status-indicator.active {
-        background-color: #22c55e;
+    .status-text.warning {
+        background-color: #fef3c7;
+        color: #92400e;
     }
 
-    .status-indicator.warning {
-        background-color: #f59e0b;
-    }
-
-    .status-indicator.error {
-        background-color: #ef4444;
+    .status-text.error {
+        background-color: #fee2e2;
+        color: #991b1b;
     }
 
     .start-camera-btn {
@@ -399,119 +408,66 @@
 let isCameraInitialized = false;
 let isExamActive = false;
 let examStream = null;
+let proctoringInterval = null;
 
 // Get DOM elements
 const modal = document.getElementById('cameraInitModal');
-console.log('Modal element:', modal);
-
 const examContent = document.getElementById('examContent');
-console.log('Exam content element:', examContent);
-
 const startButton = document.getElementById('startCameraBtn');
-console.log('Start button element:', startButton);
-
 const exitBtn = document.getElementById('exitBtn');
-console.log('Exit button element:', exitBtn);
-
 const statusText = document.getElementById('statusText');
-console.log('Status text element:', statusText);
-
 const video = document.getElementById('videoElement');
-console.log('Video element:', video);
-
 const examVideo = document.getElementById('examVideo');
-console.log('Exam video element:', examVideo);
-
 const canvas = document.getElementById('previewCanvas');
-console.log('Canvas element:', canvas);
-
 const ctx = canvas.getContext('2d');
-console.log('Canvas context:', ctx);
 
 // Add event listeners
-if (startButton) {
-    console.log('Adding click listener to start button');
-    startButton.addEventListener('click', function(e) {
-        console.log('Start button clicked');
-        e.preventDefault();
-        initializeCamera();
-    });
-} else {
-    console.error('Start button not found!');
-}
+startButton?.addEventListener('click', (e) => {
+    e.preventDefault();
+    initializeCamera();
+});
 
-if (exitBtn) {
-    console.log('Adding click listener to exit button');
-    exitBtn.addEventListener('click', function(e) {
-        console.log('Exit button clicked');
-        e.preventDefault();
-        startExam();
-    });
-} else {
-    console.error('Exit button not found!');
-}
+exitBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    startExam();
+});
 
 async function initializeCamera() {
-    console.log('Initializing camera...');
     startButton.disabled = true;
     statusText.textContent = 'Initializing camera...';
     
     try {
-        console.log('Requesting camera access...');
         const stream = await navigator.mediaDevices.getUserMedia({ 
             video: { 
-                width: 640,
-                height: 480,
+                width: { ideal: 640 },
+                height: { ideal: 480 },
                 facingMode: 'user'
             } 
         });
-        console.log('Camera access granted:', stream);
         
         video.srcObject = stream;
-        examStream = stream; // Save stream for exam video
-        console.log('Stream set to video element');
+        examStream = stream;
 
-        video.onloadedmetadata = function() {
-            console.log('Video metadata loaded');
-            video.play().then(() => {
-                console.log('Video playback started');
-                // Start face detection preview
-                startPreviewDetection();
-                
-                statusText.textContent = 'Camera initialized successfully';
-                startButton.style.display = 'none';
-                exitBtn.style.display = 'inline-block';
-                isCameraInitialized = true;
-            }).catch(err => {
-                console.error('Error starting video playback:', err);
-                statusText.textContent = 'Error starting video: ' + err.message;
-                startButton.disabled = false;
-            });
-        };
-
-        video.onerror = function(err) {
-            console.error('Video element error:', err);
-            statusText.textContent = 'Video error: ' + err.message;
-            startButton.disabled = false;
-        };
+        await video.play();
+        startPreviewDetection();
         
+        statusText.textContent = 'Camera initialized successfully';
+        startButton.style.display = 'none';
+        exitBtn.style.display = 'inline-block';
+        isCameraInitialized = true;
     } catch (err) {
-        console.error('Error accessing camera:', err);
+        console.error('Camera error:', err);
         statusText.textContent = 'Camera access denied - ' + err.message;
         startButton.disabled = false;
     }
 }
 
 function startPreviewDetection() {
-    console.log('Starting preview detection...');
-    console.log('Video dimensions:', video.videoWidth, video.videoHeight);
-    
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
     
     setInterval(() => {
         if (video.readyState === video.HAVE_ENOUGH_DATA) {
-            console.log('Processing video frame...');
             ctx.drawImage(video, 0, 0);
             const imageData = canvas.toDataURL('image/jpeg', 0.8);
             
@@ -526,20 +482,12 @@ function startPreviewDetection() {
                     exam_id: '{{ exam.id }}'
                 })
             })
-            .then(response => {
-                console.log('Frame processing response:', response);
-                return response.json();
-            })
-            .then(data => {
-                console.log('Frame processing data:', data);
-                updatePreviewStatus(data);
-            })
+            .then(response => response.json())
+            .then(data => updatePreviewStatus(data))
             .catch(error => {
-                console.error('Error processing frame:', error);
-                statusText.textContent = 'Error processing video frame: ' + error.message;
+                statusText.textContent = 'Error processing video frame';
+                exitBtn.disabled = true;
             });
-        } else {
-            console.log('Video not ready, state:', video.readyState);
         }
     }, 1000);
 }
@@ -547,11 +495,11 @@ function startPreviewDetection() {
 function updatePreviewStatus(data) {
     if (data.warning_message) {
         statusText.textContent = data.warning_message;
-        statusText.style.color = 'red';
+        statusText.className = 'status-text warning';
         exitBtn.disabled = true;
     } else {
         statusText.textContent = 'Face detected - Looking good!';
-        statusText.style.color = 'green';
+        statusText.className = 'status-text success';
         exitBtn.disabled = false;
     }
 }
@@ -564,14 +512,117 @@ function startExam() {
     
     // Set up exam video feed
     examVideo.srcObject = examStream;
+    examVideo.play().catch(console.error);
     
+    // Show exam content
     modal.style.display = 'none';
     examContent.style.display = 'block';
+    examContent.classList.add('active');
     isExamActive = true;
+    
+    // Start proctoring
     startProctoring();
+    
+    // Initialize exam timer
+    initializeTimer();
 }
 
-// Don't allow form submission unless camera is active
+function startProctoring() {
+    if (proctoringInterval) clearInterval(proctoringInterval);
+    
+    const examStatusText = document.getElementById('examStatusText');
+    const warningCount = document.getElementById('warningCount');
+    const warningMessage = document.getElementById('warningMessage');
+    
+    proctoringInterval = setInterval(() => {
+        if (!examVideo.readyState === examVideo.HAVE_ENOUGH_DATA) return;
+        
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = examVideo.videoWidth;
+        tempCanvas.height = examVideo.videoHeight;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(examVideo, 0, 0);
+        
+        const imageData = tempCanvas.toDataURL('image/jpeg', 0.8);
+        
+        fetch('/process-frame/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                frame: imageData,
+                exam_id: '{{ exam.id }}'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.warning_message) {
+                examStatusText.className = 'status-text warning';
+                examStatusText.textContent = data.warning_message;
+                
+                // Show warning popup
+                warningMessage.textContent = data.warning_message;
+                warningMessage.style.display = 'block';
+                setTimeout(() => warningMessage.style.display = 'none', 3000);
+                
+                // Update warning count
+                if (data.warning_count !== undefined) {
+                    warningCount.textContent = data.warning_count;
+                }
+                
+                // Handle exam freeze
+                if (data.is_frozen) {
+                    document.getElementById('freezeMessage').style.display = 'block';
+                    examContent.classList.add('frozen');
+                    if (data.freeze_time_left) {
+                        updateFreezeTimer(data.freeze_time_left);
+                    }
+                }
+            } else {
+                examStatusText.className = 'status-text success';
+                examStatusText.textContent = 'Monitoring active';
+            }
+        })
+        .catch(error => {
+            examStatusText.className = 'status-text error';
+            examStatusText.textContent = 'Error processing video';
+        });
+    }, 1000);
+}
+
+function updateFreezeTimer(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    document.getElementById('freezeTimer').textContent = 
+        `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
+function initializeTimer() {
+    const endTime = new Date('{{ exam.end_time }}').getTime();
+    
+    const timerInterval = setInterval(() => {
+        const now = new Date().getTime();
+        const distance = endTime - now;
+        
+        if (distance < 0) {
+            clearInterval(timerInterval);
+            document.getElementById('timer').textContent = 'Time Expired';
+            document.getElementById('examForm').submit();
+            return;
+        }
+        
+        const hours = Math.floor(distance / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        
+        document.getElementById('timer').textContent = 
+            `Time Remaining: ${hours}h ${minutes}m ${seconds}s`;
+    }, 1000);
+}
+
+// Form submission handler
 document.getElementById('examForm').addEventListener('submit', function(e) {
     if (!isExamActive) {
         e.preventDefault();
@@ -579,12 +630,24 @@ document.getElementById('examForm').addEventListener('submit', function(e) {
     }
 });
 
-// Prevent leaving the page accidentally
+// Prevent accidental page leave
 window.onbeforeunload = function() {
     if (isExamActive) {
         return "Are you sure you want to leave? This will end your exam session.";
     }
 };
+
+// Handle answered questions count
+document.querySelectorAll('.option-radio').forEach(radio => {
+    radio.addEventListener('change', updateAnsweredCount);
+});
+
+function updateAnsweredCount() {
+    const total = document.querySelectorAll('.question-card').length;
+    const answered = document.querySelectorAll('.option-radio:checked').length;
+    document.getElementById('answeredCount').textContent = answered;
+    document.getElementById('submitBtn').disabled = answered < total;
+}
 
 // Helper function to get CSRF token
 function getCookie(name) {
