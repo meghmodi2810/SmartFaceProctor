@@ -22,6 +22,7 @@ urlpatterns = [
     path('dashboard/faculty/schedule/', views.schedule_exam_page, name='schedule_exam_page'),
     path('dashboard/faculty/preview/', views.schedule_exam_preview, name='schedule_exam_preview'),
     path('dashboard/faculty/profile/', views.faculty_profile, name='faculty_profile'),
+    path('dashboard/faculty/password/', views.faculty_password_change, name='faculty_password_change'),
     path('dashboard/faculty/results/', views.faculty_results, name='faculty_results'),
     path('dashboard/faculty/results/<int:exam_id>/', views.faculty_exam_results, name='faculty_exam_results'),
     path('dashboard/faculty/report-card/<int:exam_id>/<int:student_id>/', views.generate_report_card, name='generate_report_card'),

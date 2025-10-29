@@ -55,9 +55,6 @@ def login_view(request):
         if request.user.role == 'Admin':
             return redirect('admin_dashboard')
         elif request.user.role == 'Student':
-            if not request.user.is_profile_complete:
-                messages.info(request, 'Please complete your profile to continue.')
-                return redirect('student_profile')
             return redirect('student_dashboard')
         elif request.user.role == 'Faculty':
             return redirect('faculty_dashboard')
@@ -109,9 +106,6 @@ def login_view(request):
                 if user.role == 'Admin':
                     return redirect('admin_dashboard')
                 elif user.role == 'Student':
-                    if not user.is_profile_complete:
-                        messages.info(request, 'Please complete your profile to continue.')
-                        return redirect('student_profile')
                     return redirect('student_dashboard')
                 elif user.role == 'Faculty':
                     return redirect('faculty_dashboard')
@@ -728,12 +722,15 @@ def student_dashboard(request):
 
 @login_required
 def faculty_dashboard(request):
-	user = request.user
-	if user.role != 'Faculty':
-		return redirect('student_dashboard')
-	return render(request, 'facultydash.html', {
-		'faculty': user
-	})
+    user = request.user
+    if user.role != 'Faculty':
+        return redirect('student_dashboard')
+        
+    if not user.is_profile_complete:
+        messages.info(request, 'Please complete your profile to continue.')
+        return redirect('faculty_profile')
+        
+    return render(request, 'faculty_dashboard.html', {'faculty': user})
 
 @login_required
 def faculty_exams(request):
@@ -773,10 +770,82 @@ def schedule_exam_page(request):
 
 @login_required
 def faculty_profile(request):
-	user = request.user
-	if user.role != 'Faculty':
-		return redirect('student_dashboard')
-	return render(request, 'faculty_profile.html', {'faculty': user})
+    user = request.user
+    if user.role != 'Faculty':
+        return redirect('student_dashboard')
+    
+    departments = Department.objects.filter(is_active=True).order_by('name')
+    
+    if request.method == 'POST':
+        # Update profile information
+        user.first_name = request.POST.get('first_name', '')
+        user.last_name = request.POST.get('last_name', '')
+        user.email = request.POST.get('email', '')
+        user.dob = request.POST.get('dob')
+        user.gender = request.POST.get('gender')
+        user.mobile_number = request.POST.get('mobile_number')
+        user.address = request.POST.get('address')
+        user.department_id = request.POST.get('department')
+        user.specialization = request.POST.get('specialization')
+        user.qualification = request.POST.get('qualification')
+        
+        # Handle department selection
+        department_id = request.POST.get('department')
+        if department_id:
+            try:
+                user.department = Department.objects.get(id=department_id, is_active=True)
+            except Department.DoesNotExist:
+                messages.error(request, 'Selected department is not valid.')
+                return redirect('faculty_profile')
+        
+        # Check if all required fields are filled
+        required_fields = [
+            user.first_name, user.last_name, user.email, user.dob, 
+            user.gender, user.mobile_number, user.address,
+            user.department, user.specialization, user.qualification
+        ]
+        
+        if all(required_fields):
+            user.is_profile_complete = True
+            user.save()
+            messages.success(request, 'Profile updated successfully!')
+            if request.POST.get('next'):
+                return redirect(request.POST.get('next'))
+        else:
+            messages.warning(request, 'Please fill in all required fields to complete your profile.')
+    
+    context = {
+        'user': user,
+        'departments': departments,
+        'is_first_login': not user.is_profile_complete,
+        'next': request.GET.get('next', 'faculty_dashboard')
+    }
+    return render(request, 'faculty_profile.html', context)
+
+@login_required
+def faculty_password_change(request):
+    user = request.user
+    if user.role != 'Faculty':
+        return redirect('student_dashboard')
+    
+    if request.method == 'POST':
+        old_password = request.POST.get('old_password')
+        new_password = request.POST.get('new_password')
+        confirm_password = request.POST.get('confirm_password')
+        
+        if not user.check_password(old_password):
+            messages.error(request, 'Current password is incorrect.')
+        elif new_password != confirm_password:
+            messages.error(request, 'New passwords do not match.')
+        elif len(new_password) < 8:
+            messages.error(request, 'Password must be at least 8 characters long.')
+        else:
+            user.set_password(new_password)
+            user.save()
+            messages.success(request, 'Password changed successfully. Please login again.')
+            return redirect('login')
+    
+    return render(request, 'faculty_password_change.html', {'faculty': user})
 
 @login_required
 def faculty_results(request):

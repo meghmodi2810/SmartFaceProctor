@@ -289,3 +289,24 @@ class AdminMaintenanceModeMiddleware:
         """Check if maintenance mode is enabled"""
         # Check session flag set by admin
         return request.session.get('maintenance_mode', False)
+
+
+class FacultyProfileMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if request.user.is_authenticated and request.user.role == 'faculty':
+            if not request.path.startswith('/faculty/profile/') and not request.path.startswith('/static/'):
+                # Check if profile is complete
+                if not all([
+                    request.user.first_name,
+                    request.user.last_name,
+                    request.user.email,
+                    # Add any other required fields here
+                ]):
+                    messages.warning(request, 'Please complete your profile before continuing.')
+                    return redirect('faculty_profile')
+        
+        response = self.get_response(request)
+        return response

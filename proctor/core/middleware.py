@@ -47,20 +47,33 @@ class ProfileCompletionMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.user.is_authenticated and request.user.role == 'Student':
-            # Exempt URLs that should be accessible even without a complete profile
-            exempt_paths = [
-                '/student/profile/update/',
-                '/logout/',
-                '/static/',
+        if request.user.is_authenticated:
+            # Get exempt URLs using reverse to avoid hardcoding paths
+            exempt_urls = [
+                reverse('login'),
+                reverse('logout'),
+                reverse('faculty_profile'),
+                reverse('faculty_password_change'),
+                reverse('faculty_dashboard'),  # Using reverse instead of hardcoded path
+                reverse('student_profile'),
+                reverse('student_profile_update'),
+                reverse('report_bug'),
+                '/static/',  # Static files don't have reverse URLs
+                settings.STATIC_URL,  # Additional static files path
             ]
             
-            # Check if current path is exempt
-            is_exempt = any(request.path.startswith(path) for path in exempt_paths)
+            current_url = request.path
             
+            # Check if current URL is exempt
+            is_exempt = any(current_url.startswith(url) for url in exempt_urls)
+            
+            # If user hasn't completed their profile and trying to access a non-exempt URL
             if not request.user.is_profile_complete and not is_exempt:
-                messages.warning(request, 'Please complete your profile before continuing.')
-                return redirect('/student/profile/update/')
+                if request.user.role == 'Student':
+                    messages.info(request, 'Please complete your profile to continue.')
+                    return redirect('student_profile')
+                elif request.user.role == 'Faculty':
+                    messages.info(request, 'Please complete your profile to continue.')
+                    return redirect('faculty_profile')
         
-        response = self.get_response(request)
-        return response
+        return self.get_response(request)

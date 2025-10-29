@@ -16,50 +16,72 @@
     }
     .dashboard h2 {
         margin-top: 0;
+        color: #2d3e50;
+        font-size: 1.8rem;
+        margin-bottom: 1.5rem;
+        border-bottom: 2px solid #e0e7ff;
+        padding-bottom: 0.5rem;
     }
     .panels {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         gap: 2.2rem;
         margin-top: 2.2rem;
+        animation: fadeInDash 0.6s ease-out forwards;
     }
     .panel {
         background: linear-gradient(120deg, #f8fafc 70%, #e0e7ff 100%);
         border-radius: 14px;
         padding: 1.7rem 1.3rem 1.5rem 1.3rem;
         box-shadow: 0 2px 12px rgba(44,62,80,0.07);
-        transition: box-shadow 0.3s, transform 0.3s;
+        transition: all 0.3s ease;
         position: relative;
         overflow: hidden;
+        border: 1px solid rgba(44,62,80,0.05);
     }
     .panel:hover {
-        box-shadow: 0 8px 32px rgba(44,62,80,0.18);
-        transform: translateY(-6px) scale(1.03);
+        box-shadow: 0 8px 32px rgba(44,62,80,0.12);
+        transform: translateY(-6px) scale(1.02);
+        border-color: #4f8cff;
     }
     .panel h3 {
         margin-top: 0;
         color: #2d3e50;
         font-size: 1.25rem;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .panel h3 i {
+        color: #4f8cff;
+        font-size: 1.1em;
+    }
+    .panel p {
+        color: #4b5563;
+        margin-bottom: 1rem;
+        font-size: 0.95rem;
     }
     .panel button {
         background: linear-gradient(90deg, #4f8cff 60%, #2d3e50 100%);
         color: #fff;
         border: none;
-        padding: 0.6rem 1.5rem;
-        border-radius: 6px;
+        padding: 0.7rem 1.5rem;
+        border-radius: 8px;
         cursor: pointer;
         font-size: 1.05rem;
         margin-top: 1.1rem;
         font-weight: 500;
         box-shadow: 0 2px 8px rgba(44,62,80,0.10);
-        transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+        transition: all 0.3s ease;
         outline: none;
         width: 100%;
+        position: relative;
+        overflow: hidden;
     }
     .panel button:hover {
         background: linear-gradient(90deg, #2d3e50 60%, #4f8cff 100%);
-        transform: scale(1.07) translateY(-2px);
+        transform: scale(1.05);
         box-shadow: 0 6px 18px rgba(44,62,80,0.18);
     }
     .btn-link {
@@ -68,6 +90,24 @@
     }
     .btn-link button {
         width: 100%;
+    }
+    .custom-alert-warning {
+        background: linear-gradient(120deg, #fff7ed 70%, #ffedd5 100%);
+        border: none;
+        border-radius: 10px;
+        color: #92400e;
+        padding: 1rem 1.5rem;
+        margin-bottom: 2rem;
+        animation: fadeInDash 0.6s ease-out forwards;
+    }
+    .messages-container {
+        margin-bottom: 2rem;
+    }
+    .messages-container .alert {
+        border-radius: 10px;
+        padding: 1rem 1.5rem;
+        margin-bottom: 1rem;
+        animation: fadeInDash 0.6s ease-out forwards;
     }
     
     /* Modal Styles */
@@ -82,17 +122,25 @@
         align-items: center;
         justify-content: center;
         z-index: 1000;
+        backdrop-filter: blur(4px);
     }
     
     .modal-content {
         background: white;
-        padding: 2rem;
+        padding: 2.5rem;
         border-radius: 16px;
         max-width: 500px;
         width: 90%;
         max-height: 90vh;
         overflow-y: auto;
         position: relative;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        animation: modalOpen 0.3s ease-out forwards;
+    }
+    
+    @keyframes modalOpen {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
     }
     
     .close-btn {
@@ -103,6 +151,11 @@
         cursor: pointer;
         color: #6b7280;
         font-weight: bold;
+        transition: color 0.2s;
+    }
+    
+    .close-btn:hover {
+        color: #2d3e50;
     }
     
     .form-group {
@@ -122,12 +175,13 @@
         border: 2px solid #e0e7ff;
         border-radius: 8px;
         font-size: 1rem;
-        transition: border-color 0.2s ease;
+        transition: all 0.2s ease;
     }
     
     .form-control:focus {
         outline: none;
         border-color: #4f8cff;
+        box-shadow: 0 0 0 3px rgba(79,140,255,0.1);
     }
     
     .submit-btn {
@@ -144,6 +198,7 @@
     
     .submit-btn:hover {
         background: linear-gradient(90deg, #2d3e50 60%, #4f8cff 100%);
+        transform: translateY(-2px);
     }
 </style>
 {% endblock %}
@@ -164,39 +219,50 @@
         </div>
         {% endif %}
 
+        {% if not faculty.is_profile_complete %}
+        <div class="custom-alert-warning">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Please complete your profile information to access all features.
+        </div>
+        {% endif %}
+
         <div class="panels">
             <div class="panel">
-                <h3><i class="fas fa-file-alt me-2"></i>Schedule Exam</h3>
-                <p>Create and schedule a new exam</p>
-                <button id="scheduleExamBtn">Schedule Exam</button>
+                <h3><i class="fas fa-file-alt"></i>Schedule Exam</h3>
+                <p>Create and schedule a new exam for your students</p>
+                <button id="scheduleExamBtn" {% if not faculty.is_profile_complete %}disabled{% endif %}>
+                    Schedule Exam
+                </button>
             </div>
 
             <div class="panel">
-                <h3><i class="fas fa-list me-2"></i>My Exams</h3>
+                <h3><i class="fas fa-list"></i>My Exams</h3>
                 <p>View and manage your created exams</p>
                 <a href="{% url 'faculty_exams' %}" class="btn-link">
-                    <button>View Exams</button>
+                    <button {% if not faculty.is_profile_complete %}disabled{% endif %}>View Exams</button>
                 </a>
             </div>
 
             <div class="panel">
-                <h3><i class="fas fa-user-circle me-2"></i>My Profile</h3>
+                <h3><i class="fas fa-chart-bar"></i>Results</h3>
+                <p>View student results and generate reports</p>
+                <a href="{% url 'faculty_results' %}" class="btn-link">
+                    <button {% if not faculty.is_profile_complete %}disabled{% endif %}>View Results</button>
+                </a>
+            </div>
+
+            <div class="panel">
+                <h3><i class="fas fa-user-circle"></i>My Profile</h3>
                 <p>Update your personal information</p>
                 <a href="{% url 'faculty_profile' %}" class="btn-link">
-                    <button>Update Profile</button>
+                    <button {% if faculty.is_profile_complete %}class="highlight-button"{% endif %}>
+                        {% if faculty.is_profile_complete %}Update Profile{% else %}Complete Profile{% endif %}
+                    </button>
                 </a>
             </div>
 
             <div class="panel">
-                <h3><i class="fas fa-key me-2"></i>Password</h3>
-                <p>Change your account password</p>
-                <a href="{% url 'faculty_password_change' %}" class="btn-link">
-                    <button>Change Password</button>
-                </a>
-            </div>
-
-            <div class="panel">
-                <h3><i class="fas fa-bug me-2"></i>Report Issue</h3>
+                <h3><i class="fas fa-bug"></i>Report Issue</h3>
                 <p>Report any technical issues or bugs</p>
                 <a href="{% url 'report_bug' %}" class="btn-link">
                     <button>Report Bug</button>
@@ -254,7 +320,9 @@
 
 <script>
 document.getElementById('scheduleExamBtn').onclick = function() {
-    document.getElementById('scheduleExamModal').style.display = 'flex';
+    if (!this.disabled) {
+        document.getElementById('scheduleExamModal').style.display = 'flex';
+    }
 };
 document.getElementById('closeModalBtn').onclick = function() {
     document.getElementById('scheduleExamModal').style.display = 'none';
@@ -265,5 +333,8 @@ window.onclick = function(event) {
         modal.style.display = "none";
     }
 };
+
+// Set minimum date for exam scheduling to today
+document.getElementById('examDate').min = new Date().toISOString().split('T')[0];
 </script>
 {% endblock %}

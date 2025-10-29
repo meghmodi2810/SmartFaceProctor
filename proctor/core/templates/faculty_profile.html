@@ -12,12 +12,12 @@
     
     .profile-header {
         text-align: center;
-        margin-bottom: 3rem;
+        margin-bottom: 2rem;
         color: #2d3e50;
     }
     
     .profile-header h1 {
-        font-size: 2.5rem;
+        font-size: 2rem;
         margin-bottom: 0.5rem;
         background: linear-gradient(135deg, #2d3e50 0%, #4f8cff 100%);
         -webkit-background-clip: text;
@@ -33,21 +33,19 @@
         border: 1px solid #e0e7ff;
     }
     
-    .profile-info {
+    .form-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
         gap: 1.5rem;
         margin-bottom: 2rem;
     }
     
-    .info-item {
-        padding: 1rem;
-        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
-        border-radius: 8px;
-        border-left: 4px solid #4f8cff;
+    .form-group {
+        margin-bottom: 1.5rem;
     }
     
-    .info-label {
+    .form-group label {
+        display: block;
         font-weight: 600;
         color: #2d3e50;
         margin-bottom: 0.5rem;
@@ -56,32 +54,51 @@
         letter-spacing: 0.5px;
     }
     
-    .info-value {
-        color: #4f8cff;
-        font-size: 1.1rem;
-        font-weight: 500;
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #e0e7ff;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #4f8cff;
+        box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.1);
+    }
+    
+    .required-field::after {
+        content: '*';
+        color: #ef4444;
+        margin-left: 4px;
     }
     
     .profile-actions {
         text-align: center;
         margin-top: 2rem;
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
     }
     
-    .action-btn {
-        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
-        color: white;
-        border: none;
+    .btn {
         padding: 0.75rem 2rem;
         border-radius: 8px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.3s ease;
         text-decoration: none;
-        display: inline-block;
-        margin: 0 0.5rem;
+        border: none;
     }
     
-    .action-btn:hover {
+    .btn-primary {
+        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
+        color: white;
+    }
+    
+    .btn-primary:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(79, 140, 255, 0.4);
     }
@@ -94,6 +111,25 @@
     
     .btn-secondary:hover {
         background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        transform: translateY(-2px);
+    }
+    
+    .alert {
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+        animation: fadeIn 0.3s ease-out;
+    }
+    
+    .alert-warning {
+        background: linear-gradient(120deg, #fff7ed 70%, #ffedd5 100%);
+        border-left: 4px solid #f59e0b;
+        color: #92400e;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
     
     @media (max-width: 768px) {
@@ -102,21 +138,19 @@
         }
         
         .profile-header h1 {
-            font-size: 2rem;
+            font-size: 1.75rem;
         }
         
-        .profile-info {
+        .form-grid {
             grid-template-columns: 1fr;
         }
         
         .profile-actions {
-            display: flex;
             flex-direction: column;
-            gap: 1rem;
         }
         
-        .action-btn {
-            margin: 0;
+        .btn {
+            width: 100%;
         }
     }
 </style>
@@ -126,41 +160,108 @@
 <div class="profile-container">
     <div class="profile-header">
         <h1>Faculty Profile</h1>
-        <p>Manage your personal information and account settings</p>
+        {% if is_first_login %}
+            <p>Please complete your profile information to continue</p>
+        {% else %}
+            <p>Manage your personal information and account settings</p>
+        {% endif %}
     </div>
     
+    {% if messages %}
+    <div class="messages-container">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% if not user.is_profile_complete %}
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        Your profile is incomplete. Please fill in all required fields marked with an asterisk (*).
+    </div>
+    {% endif %}
+    
     <div class="profile-card">
-        <div class="profile-info">
-            <div class="info-item">
-                <div class="info-label">Faculty ID</div>
-                <div class="info-value">{{ faculty.username }}</div>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next }}">
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="required-field" for="first_name">First Name</label>
+                    <input type="text" class="form-control" id="first_name" name="first_name" value="{{ user.first_name }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="required-field" for="last_name">Last Name</label>
+                    <input type="text" class="form-control" id="last_name" name="last_name" value="{{ user.last_name }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="required-field" for="email">Email Address</label>
+                    <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="required-field" for="dob">Date of Birth</label>
+                    <input type="date" class="form-control" id="dob" name="dob" value="{{ user.dob|date:'Y-m-d' }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="required-field" for="gender">Gender</label>
+                    <select class="form-control" id="gender" name="gender" required>
+                        <option value="">Select Gender</option>
+                        <option value="Male" {% if user.gender == 'Male' %}selected{% endif %}>Male</option>
+                        <option value="Female" {% if user.gender == 'Female' %}selected{% endif %}>Female</option>
+                        <option value="Other" {% if user.gender == 'Other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="required-field" for="mobile_number">Mobile Number</label>
+                    <input type="tel" class="form-control" id="mobile_number" name="mobile_number" value="{{ user.mobile_number }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="required-field" for="department">Department</label>
+                    <select class="form-control" id="department" name="department" required>
+                        <option value="">Select Department</option>
+                        {% for dept in departments %}
+                        <option value="{{ dept.id }}" {% if user.department_id == dept.id %}selected{% endif %}>
+                            {{ dept.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="required-field" for="specialization">Specialization</label>
+                    <input type="text" class="form-control" id="specialization" name="specialization" value="{{ user.specialization }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="required-field" for="qualification">Qualification</label>
+                    <input type="text" class="form-control" id="qualification" name="qualification" value="{{ user.qualification }}" required>
+                </div>
             </div>
-            <div class="info-item">
-                <div class="info-label">Full Name</div>
-                <div class="info-value">{{ faculty.first_name }} {{ faculty.last_name }}</div>
+            
+            <div class="form-group">
+                <label class="required-field" for="address">Address</label>
+                <textarea class="form-control" id="address" name="address" rows="3" required>{{ user.address }}</textarea>
             </div>
-            <div class="info-item">
-                <div class="info-label">Email</div>
-                <div class="info-value">{{ faculty.email }}</div>
+            
+            <div class="profile-actions">
+                <button type="submit" class="btn btn-primary">
+                    {% if is_first_login %}Complete Profile{% else %}Update Profile{% endif %}
+                </button>
+                {% if not is_first_login %}
+                <a href="{% url 'faculty_password_change' %}" class="btn btn-secondary">Change Password</a>
+                {% endif %}
             </div>
-            <div class="info-item">
-                <div class="info-label">Role</div>
-                <div class="info-value">{{ faculty.role }}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Date Joined</div>
-                <div class="info-value">{{ faculty.date_joined|date:"F d, Y" }}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Last Login</div>
-                <div class="info-value">{{ faculty.last_login|date:"F d, Y H:i"|default:"Never" }}</div>
-            </div>
-        </div>
-        
-        <div class="profile-actions">
-            <a href="#" class="action-btn">Edit Profile</a>
-            <a href="#" class="action-btn btn-secondary">Change Password</a>
-        </div>
+        </form>
     </div>
 </div>
-{% endblock %} 
+{% endblock %}

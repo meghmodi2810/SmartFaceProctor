@@ -31,6 +31,8 @@ class User(AbstractUser):
     course = models.CharField(max_length=100, null=True, blank=True)
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
     current_semester = models.IntegerField(null=True, blank=True)
+    specialization = models.CharField(max_length=100, null=True, blank=True)
+    qualification = models.CharField(max_length=100, null=True, blank=True)
     is_profile_complete = models.BooleanField(default=False)
 
     USERNAME_FIELD = 'username'

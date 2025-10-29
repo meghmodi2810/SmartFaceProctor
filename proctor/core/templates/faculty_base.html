@@ -135,6 +135,19 @@
             color: #ffd700;
             font-weight: 500;
         }
+        .nav-link-disabled {
+            opacity: 0.6;
+            cursor: not-allowed !important;
+            pointer-events: none;
+        }
+        .nav-link-highlight {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { text-shadow: 0 0 0 0 rgba(255, 215, 0, 0.4); }
+            70% { text-shadow: 0 0 10px 10px rgba(255, 215, 0, 0); }
+            100% { text-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -144,9 +157,11 @@
         <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
         <ul id="mobile-menu">
             <li><a href="{% url 'faculty_dashboard' %}">Dashboard</a></li>
-            <li><a href="{% url 'faculty_exams' %}">My Exams</a></li>
-            <li><a href="{% url 'faculty_results' %}">Exam Results</a></li>
-            <li><a href="{% url 'faculty_profile' %}">Profile</a></li>
+            <li><a href="{% url 'faculty_exams' %}" class="{% if not faculty.is_profile_complete %}nav-link-disabled{% endif %}">My Exams</a></li>
+            <li><a href="{% url 'faculty_results' %}" class="{% if not faculty.is_profile_complete %}nav-link-disabled{% endif %}">Exam Results</a></li>
+            <li><a href="{% url 'faculty_profile' %}" class="{% if not faculty.is_profile_complete %}nav-link-highlight{% endif %}">
+                {% if faculty.is_profile_complete %}Profile{% else %}Complete Profile{% endif %}
+            </a></li>
             <li><a href="{% url 'report_bug' %}">Report Bug</a></li>
             <li><a href="{% url 'logout' %}">Logout</a></li>
         </ul>
@@ -177,4 +192,4 @@
         });
     </script>
 </body>
-</html> 
+</html>
