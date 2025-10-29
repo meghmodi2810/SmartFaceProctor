@@ -173,8 +173,9 @@
         <p style="color: #64748b; margin: 0;">Monitor active exams and manage student violations in real-time</p>
     </div>
 
-    {% if ongoing_exams %}
-        {% for exam in ongoing_exams %}
+    {% if exam_students_data %}
+        {% for exam_data in exam_students_data %}
+        {% with exam=exam_data.exam %}
         <div class="exam-card" id="exam-{{ exam.id }}">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                 <div>
@@ -194,43 +195,62 @@
                         <th>Warnings</th>
                         <th>Violations</th>
                         <th>Time in Exam</th>
+                        <th>Recent Warnings</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="students-{{ exam.id }}">
-                    {% for attempt in exam.attempts.all %}
-                    {% if not attempt.student.submission_set.filter.exists %}
-                    <tr id="student-{{ attempt.student.id }}-exam-{{ exam.id }}">
+                    {% for student_data in exam_data.students %}
+                    {% if not student_data.has_submitted %}
+                    <tr id="student-{{ student_data.student.id }}-exam-{{ exam.id }}">
                         <td>
-                            <strong>{{ attempt.student.get_full_name|default:attempt.student.username }}</strong><br>
-                            <small style="color: #64748b;">{{ attempt.student.username }}</small>
+                            <strong>{{ student_data.student.get_full_name|default:student_data.student.username }}</strong><br>
+                            <small style="color: #64748b;">{{ student_data.student.username }}</small>
                         </td>
                         <td>
-                            {% if attempt.is_frozen %}
+                            {% if student_data.is_frozen %}
                             <span class="status-badge status-frozen">Frozen</span>
                             {% else %}
                             <span class="status-badge status-active">Active</span>
                             {% endif %}
                         </td>
                         <td>
-                            <span class="warning-count">{{ attempt.violation_count }}</span> / {{ exam.warning_limit }}
+                            <span class="warning-count">{{ student_data.warnings }}</span> / {{ exam.warning_limit }}
                         </td>
                         <td>
-                            {{ attempt.violation_count }}
+                            {{ student_data.violation_count }}
                         </td>
                         <td>
-                            {{ attempt.started_at|timesince }} ago
+                            {% if student_data.started_at %}
+                            {{ student_data.started_at|timesince }} ago
+                            {% else %}
+                            <em>Not started</em>
+                            {% endif %}
                         </td>
                         <td>
-                            {% if attempt.is_frozen %}
-                            <button class="action-btn success" onclick="cancelFreeze({{ exam.id }}, {{ attempt.student.id }})">
+                            {% if student_data.recent_violations %}
+                                <div style="font-size: 0.85rem;">
+                                    {% for violation in student_data.recent_violations|slice:":3" %}
+                                    <div style="color: #dc2626; margin: 0.25rem 0;">
+                                        <i class="fas fa-exclamation-circle"></i> {{ violation.type }}<br>
+                                        <small style="color: #64748b;">{{ violation.timestamp|timesince }} ago</small>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <span style="color: #10b981;">No violations</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if student_data.is_frozen %}
+                            <button class="action-btn success" onclick="cancelFreeze({{ exam.id }}, {{ student_data.student.id }})">
                                 <i class="fas fa-unlock"></i> Unfreeze
                             </button>
                             {% endif %}
-                            <button class="action-btn" onclick="resetAttempt({{ exam.id }}, {{ attempt.student.id }})">
+                            <button class="action-btn" onclick="resetAttempt({{ exam.id }}, {{ student_data.student.id }})">
                                 <i class="fas fa-redo"></i> Reset
                             </button>
-                            <button class="action-btn danger" onclick="viewViolations({{ exam.id }}, {{ attempt.student.id }})">
+                            <button class="action-btn danger" onclick="viewViolations({{ exam.id }}, {{ student_data.student.id }})">
                                 <i class="fas fa-exclamation-triangle"></i> View Details
                             </button>
                         </td>
@@ -238,7 +258,7 @@
                     {% endif %}
                     {% empty %}
                     <tr>
-                        <td colspan="6" style="text-align: center; color: #64748b; padding: 2rem;">
+                        <td colspan="7" style="text-align: center; color: #64748b; padding: 2rem;">
                             No students currently taking this exam
                         </td>
                     </tr>
@@ -246,6 +266,7 @@
                 </tbody>
             </table>
         </div>
+        {% endwith %}
         {% endfor %}
     {% else %}
         <div class="exam-card">

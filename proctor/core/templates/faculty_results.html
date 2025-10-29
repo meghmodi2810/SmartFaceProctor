@@ -251,6 +251,15 @@
 </div>
 
 <script>
+// Auto-search on typing without clicking
+['searchQuery','minScore','maxScore'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', debounce(searchExams, 300));
+});
+
+function debounce(fn, delay){
+    let t; return function(){ clearTimeout(t); t = setTimeout(fn, delay); };
+}
 function searchExams() {
     const query = document.getElementById('searchQuery').value;
     const minScore = document.getElementById('minScore').value;

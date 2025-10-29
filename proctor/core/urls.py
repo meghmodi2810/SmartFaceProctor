@@ -75,6 +75,8 @@ urlpatterns = [
     path('customadmin/settings/', admin_views.admin_system_settings, name='admin_system_settings'),
     path('customadmin/export/', admin_views.admin_export_data, name='admin_export_data'),
     path('customadmin/departments/', admin_views.admin_departments, name='admin_departments'),
+    path('customadmin/semesters/', admin_views.admin_semesters, name='admin_semesters'),
+    path('customadmin/divisions/', admin_views.admin_divisions, name='admin_divisions'),
     
     # Session Management URLs
     path('customadmin/sessions/', session_admin_views.admin_session_monitor, name='admin_session_monitor'),

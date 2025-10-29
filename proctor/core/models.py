@@ -10,6 +10,36 @@ class Department(models.Model):
     def __str__(self):
         return self.name
 
+
+class Semester(models.Model):
+    name = models.CharField(max_length=50)
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='semesters')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['department', 'name']
+        unique_together = ('name', 'department')
+
+    def __str__(self):
+        return f"{self.name} - {self.department.name}"
+
+
+class Division(models.Model):
+    name = models.CharField(max_length=50)
+    department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name='divisions')
+    semester = models.ForeignKey(Semester, on_delete=models.CASCADE, related_name='divisions', null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['department', 'semester', 'name']
+        unique_together = ('name', 'department', 'semester')
+
+    def __str__(self):
+        sem = f"{self.semester.name} - " if self.semester else ""
+        return f"{sem}{self.name} - {self.department.name}"
+
 class User(AbstractUser):
     ROLE_CHOICES = (
         ('Student', 'Student'),
@@ -30,6 +60,8 @@ class User(AbstractUser):
     branch = models.CharField(max_length=100, null=True, blank=True)
     course = models.CharField(max_length=100, null=True, blank=True)
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
+    semester = models.ForeignKey(Semester, on_delete=models.SET_NULL, null=True, blank=True)
+    division = models.ForeignKey(Division, on_delete=models.SET_NULL, null=True, blank=True)
     current_semester = models.IntegerField(null=True, blank=True)
     specialization = models.CharField(max_length=100, null=True, blank=True)
     qualification = models.CharField(max_length=100, null=True, blank=True)

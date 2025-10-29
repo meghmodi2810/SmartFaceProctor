@@ -53,6 +53,8 @@
         box-shadow: 0 4px 20px rgba(44, 62, 80, 0.1);
         border: 1px solid #e0e7ff;
     }
+    .hint { color:#64748b; font-size:.9rem; margin-top:.25rem; }
+    .section-title { font-weight:700; color:#2d3e50; margin:1rem 0 .75rem; }
     
     .form-row {
         display: grid;
@@ -242,6 +244,47 @@
                 <input type="url" class="form-control" id="sheetUrl" name="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/..." required>
             </div>
             
+            <!-- Student Selection Section -->
+            <div class="form-group">
+                <div class="section-title">Student Selection</div>
+                <label class="hint">Choose how students are added to this exam</label>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="student_selection" id="allStudents" value="all" checked onchange="toggleStudentSelection()">
+                    <label class="form-check-label" for="allStudents">All Students</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="student_selection" id="byDivision" value="division" onchange="toggleStudentSelection()">
+                    <label class="form-check-label" for="byDivision">Select by Division</label>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="radio" name="student_selection" id="manual" value="manual" onchange="toggleStudentSelection()">
+                    <label class="form-check-label" for="manual">Manually Select Students</label>
+                </div>
+                
+                <!-- Division Selection (hidden by default) -->
+                <div id="divisionSelection" style="display: none;">
+                    <label class="form-label">Select Divisions</label>
+                    <select name="division_ids" id="divisionSelect" class="form-select" multiple size="5">
+                        {% for division in divisions %}
+                        <option value="{{ division.id }}">{{ division.department.name }} - {{ division.name }}{% if division.semester %} - {{ division.semester.name }}{% endif %}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="hint">Hold Ctrl/Cmd to select multiple divisions</div>
+                </div>
+                
+                <!-- Manual Student Selection (hidden by default) -->
+                <div id="manualSelection" style="display: none;">
+                    <label class="form-label">Select Students</label>
+                    <input type="text" class="form-control mb-2" id="studentSearch" placeholder="Search students..." onkeyup="filterStudents()">
+                    <select name="student_ids" id="studentSelect" class="form-select" multiple size="5">
+                        {% for student in students %}
+                        <option value="{{ student.id }}">{{ student.get_full_name }} ({{ student.username }}) - {{ student.department.name|default:"No Dept" }}{% if student.division %} - {{ student.division.name }}{% endif %}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="hint">Hold Ctrl/Cmd to select multiple students</div>
+                </div>
+            </div>
+            
             <div class="form-actions">
                 <button type="submit" class="preview-btn">Preview</button>
                 <a href="{% url 'faculty_dashboard' %}" class="cancel-btn">Cancel</a>
@@ -249,4 +292,26 @@
         </form>
     </div>
 </div>
+
+<script>
+function toggleStudentSelection() {
+    const allStudents = document.getElementById('allStudents').checked;
+    const byDivision = document.getElementById('byDivision').checked;
+    const manual = document.getElementById('manual').checked;
+    
+    document.getElementById('divisionSelection').style.display = byDivision ? 'block' : 'none';
+    document.getElementById('manualSelection').style.display = manual ? 'block' : 'none';
+}
+
+function filterStudents() {
+    const searchTerm = document.getElementById('studentSearch').value.toLowerCase();
+    const studentSelect = document.getElementById('studentSelect');
+    const options = studentSelect.getElementsByTagName('option');
+    
+    for (let i = 0; i < options.length; i++) {
+        const text = options[i].textContent.toLowerCase();
+        options[i].style.display = text.includes(searchTerm) ? '' : 'none';
+    }
+}
+</script>
 {% endblock %}

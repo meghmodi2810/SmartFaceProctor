@@ -12,6 +12,11 @@ import json
 import csv
 
 from .models import User, Exam, Question, Submission, Violation, BugReport, PasswordResetOTP, ExamAssignment, Department
+try:
+    from .models import Semester, Division
+except Exception:
+    Semester = None
+    Division = None
 from .Modules.send_email_using_sheets import SmartFaceProctorMailer
 from .views import get_client_ip
 
@@ -830,4 +835,146 @@ def admin_departments(request):
     return render(request, 'admin_departments.html', {
         'admin': request.user,
         'departments': departments
+    })
+
+
+@admin_required
+def admin_semesters(request):
+    """Manage semesters for each department"""
+    departments = Department.objects.filter(is_active=True).order_by('name')
+    selected_dept_id = request.GET.get('department_id')
+    semesters = Semester.objects.none() if Semester else []
+    
+    if selected_dept_id:
+        try:
+            selected_dept = Department.objects.get(id=selected_dept_id)
+            semesters = Semester.objects.filter(department=selected_dept).order_by('name') if Semester else []
+        except Department.DoesNotExist:
+            pass
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'add':
+            name = request.POST.get('name')
+            department_id = request.POST.get('department_id')
+            if name and department_id and Semester:
+                try:
+                    department = Department.objects.get(id=department_id, is_active=True)
+                    # Check for duplicate
+                    if Semester.objects.filter(name=name, department=department).exists():
+                        messages.error(request, f'Semester "{name}" already exists for {department.name}.')
+                    else:
+                        Semester.objects.create(name=name, department=department)
+                        messages.success(request, f'Semester "{name}" added successfully for {department.name}.')
+                except Department.DoesNotExist:
+                    messages.error(request, 'Department not found.')
+            else:
+                messages.error(request, 'Semester name and department are required.')
+        
+        elif action == 'delete':
+            semester_id = request.POST.get('semester_id')
+            if semester_id:
+                try:
+                    sem = Semester.objects.get(id=semester_id)
+                    # Check if semester has any students or divisions
+                    if User.objects.filter(semester=sem).exists() or Division.objects.filter(semester=sem).exists():
+                        sem.is_active = False
+                        sem.save()
+                        messages.warning(request, f'Semester "{sem.name}" has been deactivated as it has associated records.')
+                    else:
+                        sem.delete()
+                        messages.success(request, f'Semester "{sem.name}" deleted successfully.')
+                except Semester.DoesNotExist:
+                    messages.error(request, 'Semester not found.')
+        
+        elif action == 'toggle':
+            semester_id = request.POST.get('semester_id')
+            if semester_id:
+                try:
+                    sem = Semester.objects.get(id=semester_id)
+                    sem.is_active = not sem.is_active
+                    sem.save()
+                    status = 'activated' if sem.is_active else 'deactivated'
+                    messages.success(request, f'Semester "{sem.name}" {status} successfully.')
+                except Semester.DoesNotExist:
+                    messages.error(request, 'Semester not found.')
+    
+    return render(request, 'admin_semesters.html', {
+        'admin': request.user,
+        'departments': departments,
+        'semesters': semesters,
+        'selected_dept_id': int(selected_dept_id) if selected_dept_id else None,
+    })
+
+
+@admin_required
+def admin_divisions(request):
+    """Manage divisions per department and semester"""
+    if Division is None or Semester is None:
+        messages.error(request, 'Semester/Division models are not available.')
+        return redirect('admin_dashboard')
+    departments = Department.objects.filter(is_active=True).order_by('name')
+    selected_dept_id = request.GET.get('department_id')
+    selected_sem_id = request.GET.get('semester_id')
+    divisions = Division.objects.none()
+    selected_dept = None
+    selected_sem = None
+    if selected_dept_id:
+        try:
+            selected_dept = Department.objects.get(id=selected_dept_id)
+            sem_qs = Semester.objects.filter(department=selected_dept).order_by('name')
+            if selected_sem_id:
+                selected_sem = Semester.objects.get(id=selected_sem_id, department=selected_dept)
+                divisions = Division.objects.filter(department=selected_dept, semester=selected_sem).order_by('name')
+        except (Department.DoesNotExist, Semester.DoesNotExist):
+            pass
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'add':
+            name = request.POST.get('name')
+            department_id = request.POST.get('department_id')
+            semester_id = request.POST.get('semester_id')
+            if name and department_id:
+                try:
+                    dept = Department.objects.get(id=department_id, is_active=True)
+                    sem = Semester.objects.get(id=semester_id) if semester_id else None
+                    if Division.objects.filter(name=name, department=dept, semester=sem).exists():
+                        messages.error(request, 'Division already exists for selection.')
+                    else:
+                        Division.objects.create(name=name, department=dept, semester=sem)
+                        messages.success(request, 'Division added successfully.')
+                except (Department.DoesNotExist, Semester.DoesNotExist):
+                    messages.error(request, 'Invalid department/semester')
+        elif action == 'delete':
+            division_id = request.POST.get('division_id')
+            if division_id:
+                try:
+                    div = Division.objects.get(id=division_id)
+                    if User.objects.filter(division=div).exists():
+                        div.is_active = False
+                        div.save()
+                        messages.warning(request, 'Division deactivated due to associated students.')
+                    else:
+                        div.delete()
+                        messages.success(request, 'Division deleted.')
+                except Division.DoesNotExist:
+                    messages.error(request, 'Division not found.')
+        elif action == 'toggle':
+            division_id = request.POST.get('division_id')
+            if division_id:
+                try:
+                    div = Division.objects.get(id=division_id)
+                    div.is_active = not div.is_active
+                    div.save()
+                    messages.success(request, 'Division status updated.')
+                except Division.DoesNotExist:
+                    messages.error(request, 'Division not found.')
+    return render(request, 'admin_divisions.html', {
+        'admin': request.user,
+        'departments': departments,
+        'semesters': Semester.objects.filter(department=selected_dept).order_by('name') if selected_dept else [],
+        'divisions': divisions,
+        'selected_dept_id': int(selected_dept_id) if selected_dept_id else None,
+        'selected_sem_id': int(selected_sem_id) if selected_sem_id else None,
     })

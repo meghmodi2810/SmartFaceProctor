@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.http import StreamingHttpResponse, JsonResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from .models import Exam, Submission, Violation, Department
+from .models import Exam, Submission, Violation, Department, User
 import cv2
 import numpy as np
 from django.utils import timezone
@@ -610,6 +610,10 @@ def schedule_exam(request):
 			date = naive_date
 		duration_minutes = int(freeze_time)
 		
+		# Handle student selection
+		student_selection = request.POST.get('student_selection', 'all')  # 'all', 'division', 'manual'
+		is_selective = False
+		
 		# Create Exam
 		exam = Exam.objects.create(
 			title=title,
@@ -617,7 +621,8 @@ def schedule_exam(request):
 			duration_minutes=duration_minutes,
 			created_by=request.user,
 			sheet_url=sheet_url,
-			description=f"Warning Limit: {warning_limit}"
+			description=f"Warning Limit: {warning_limit}",
+			is_selective=(student_selection != 'all')
 		)
 		
 		# Extract and save questions
@@ -632,6 +637,29 @@ def schedule_exam(request):
 				option_d=q.get('Option D', ''),
 				answer=q.get('Answer', '')
 			)
+		
+		# Assign students based on selection
+		from .models import User, ExamAssignment
+		if student_selection == 'division':
+			division_ids = request.POST.getlist('division_ids')
+			if division_ids:
+				students = User.objects.filter(role='Student', division_id__in=division_ids, is_active=True)
+				for student in students:
+					ExamAssignment.objects.get_or_create(
+						exam=exam,
+						student=student,
+						defaults={'assigned_by': request.user, 'is_active': True}
+					)
+		elif student_selection == 'manual':
+			student_ids = request.POST.getlist('student_ids')
+			if student_ids:
+				students = User.objects.filter(role='Student', id__in=student_ids, is_active=True)
+				for student in students:
+					ExamAssignment.objects.get_or_create(
+						exam=exam,
+						student=student,
+						defaults={'assigned_by': request.user, 'is_active': True}
+					)
 		
 		messages.success(request, f'Exam "{title}" scheduled successfully with {len(questions)} questions!')
 		return HttpResponseRedirect(reverse('faculty_exams'))
@@ -761,12 +789,26 @@ def faculty_exams(request):
 
 @login_required
 def schedule_exam_page(request):
-	user = request.user
-	if user.role != 'Faculty':
-		return redirect('student_dashboard')
-	return render(request, 'faculty_schedule.html', {
-		'faculty': user
-	})
+    """Display exam scheduling form with student selection options"""
+    if request.user.role != 'Faculty':
+        return redirect('student_dashboard')
+    
+    # Get all departments, divisions, and students for selection
+    departments = Department.objects.filter(is_active=True).order_by('name')
+    try:
+        from .models import Division as _Division
+        divisions = _Division.objects.filter(is_active=True).order_by('department', 'name')
+    except Exception:
+        divisions = []
+    students = User.objects.filter(role='Student', is_active=True).select_related('department').order_by('first_name', 'last_name')
+    
+    context = {
+        'departments': departments,
+        'divisions': divisions,
+        'students': students[:100],  # Limit to first 100 for performance
+    }
+    
+    return render(request, 'faculty_schedule.html', context)
 
 @login_required
 def faculty_profile(request):
@@ -852,24 +894,41 @@ def faculty_results(request):
 		return redirect('student_dashboard')
 	
 	# Get all exams created by this faculty
-	exams = Exam.objects.filter(created_by=user).order_by('-date')
+	exams_qs = Exam.objects.filter(created_by=user).order_by('-date')
 	
-	# Add submission statistics for each exam
-	for exam in exams:
-		exam.total_submissions = Submission.objects.filter(exam=exam).count()
-		exam.average_score = Submission.objects.filter(exam=exam).aggregate(
-			avg_score=models.Avg('score')
-		)['avg_score'] or 0
-		exam.highest_score = Submission.objects.filter(exam=exam).aggregate(
-			max_score=models.Max('score')
-		)['max_score'] or 0
-		exam.lowest_score = Submission.objects.filter(exam=exam).aggregate(
-			min_score=models.Min('score')
-		)['min_score'] or 0
+	# Optional search
+	query = request.GET.get('q', '').strip()
+	if query:
+		exams_qs = exams_qs.filter(title__icontains=query)
+	
+	# Precompute stats efficiently
+	from django.db.models import Count, Avg, Max, Min
+	exams = list(exams_qs)
+	exam_ids = [e.id for e in exams]
+	stats = Submission.objects.filter(exam_id__in=exam_ids).values('exam_id').annotate(
+		total_submissions=Count('id'),
+		average_score=Avg('score'),
+		highest_score=Max('score'),
+		lowest_score=Min('score')
+	)
+	exam_id_to_stats = {s['exam_id']: s for s in stats}
+	for e in exams:
+		s = exam_id_to_stats.get(e.id, {})
+		e.total_submissions = s.get('total_submissions', 0)
+		e.average_score = s.get('average_score', 0) or 0
+		e.highest_score = s.get('highest_score', 0) or 0
+		e.lowest_score = s.get('lowest_score', 0) or 0
+	
+	if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+		# Return partial HTML for async update
+		from django.template.loader import render_to_string
+		html = render_to_string('partials/faculty_results_list.html', { 'exams': exams })
+		return JsonResponse({ 'html': html })
 	
 	return render(request, 'faculty_results.html', {
 		'faculty': user,
-		'exams': exams
+		'exams': exams,
+		'query': query
 	})
 
 @login_required
@@ -980,12 +1039,40 @@ def student_exams(request):
     if user.role != 'Student':
         return redirect('faculty_dashboard')
     
-    all_exams = Exam.objects.select_related('created_by').prefetch_related('questions').all().order_by('date')
+    from .models import ExamAssignment
+    # Filter exams: if exam is_selective=True, only show if student is assigned
+    # Optimize: avoid prefetching questions here (expensive on list view)
+    all_exams = Exam.objects.select_related('created_by').only('id','title','date','duration_minutes','created_by_id','is_selective').order_by('date')
+    
+    # Filter based on selective assignment
+    if all_exams.exists():
+        # Get IDs of exams where student is assigned (for selective exams)
+        selective_exam_ids = set(ExamAssignment.objects.filter(
+            student=user, exam_id__in=[e.id for e in all_exams], is_active=True
+        ).values_list('exam_id', flat=True))
+        
+        # Only show non-selective exams OR selective exams where student is assigned
+        filtered_exams = []
+        for exam in all_exams:
+            if not exam.is_selective or exam.id in selective_exam_ids:
+                filtered_exams.append(exam)
+        all_exams = filtered_exams
+    
     exams_with_status = []
     
     current_time = timezone.now()
     
-    for exam in all_exams:
+    # Optional: paginate to speed up rendering for many exams
+    try:
+        from django.core.paginator import Paginator
+        paginator = Paginator(all_exams, 15)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+        exams_iterable = page_obj.object_list
+    except Exception:
+        exams_iterable = all_exams
+
+    for exam in exams_iterable:
         exam_end_time = exam.date + timezone.timedelta(minutes=exam.duration_minutes)
         
         if current_time < exam.date:
@@ -998,41 +1085,7 @@ def student_exams(request):
                 status = 'completed'
             else:
                 status = 'expired'
-                # Handle missed exam notification asynchronously
-                notification_key = f'missed_exam_notified_{exam.id}_{user.id}'
-                if not request.session.get(notification_key):
-                    try:
-                        from django.core.mail import send_mail
-                        import json
-                        
-                        with open('core/config/SMTP_credentials.json') as f:
-                            smtp_config = json.load(f)
-                        
-                        subject = f'Missed Exam: {exam.title}'
-                        message = f'''Dear {user.get_full_name()},
-
-We noticed that you missed the following exam:
-
-Exam: {exam.title}
-Date: {exam.date.strftime('%B %d, %Y')}
-Time: {exam.date.strftime('%H:%M')}
-Duration: {exam.duration_minutes} minutes
-
-If you believe this is an error, please contact your faculty immediately.
-
-Best regards,
-Smart Face Proctor System'''
-                        
-                        send_mail(
-                            subject,
-                            message,
-                            smtp_config.get('email_from'),
-                            [user.email],
-                            fail_silently=True
-                        )
-                        request.session[notification_key] = True
-                    except Exception:
-                        pass  # Silently handle SMTP errors to avoid affecting page load
+                # Removed email sending to avoid slowing down page rendering
         else:
             status = 'unknown'
         
@@ -1045,7 +1098,8 @@ Smart Face Proctor System'''
     
     context = {
         'student': user,
-        'exams': exams_with_status
+        'exams': exams_with_status,
+        'page_obj': 'page_obj' in locals() and page_obj or None
     }
     return render(request, 'student_exams.html', context)
 
@@ -1056,6 +1110,20 @@ def student_profile(request):
         return redirect('faculty_dashboard')
     
     departments = Department.objects.filter(is_active=True).order_by('name')
+    
+    # Get semesters and divisions based on selected department (optional models)
+    semesters = []
+    divisions = []
+    try:
+        from .models import Semester as _Semester, Division as _Division
+        if user.department:
+            semesters = _Semester.objects.filter(department=user.department, is_active=True).order_by('name')
+            if getattr(user, 'semester', None):
+                divisions = _Division.objects.filter(department=user.department, semester=user.semester, is_active=True).order_by('name')
+            else:
+                divisions = _Division.objects.filter(department=user.department, is_active=True).order_by('name')
+    except Exception:
+        pass
     
     if request.method == 'POST':
         # Update profile information
@@ -1074,25 +1142,68 @@ def student_profile(request):
         if department_id:
             try:
                 user.department = Department.objects.get(id=department_id, is_active=True)
+                # Reset semester and division if department changes
+                try:
+                    from .models import Semester as _Semester, Division as _Division
+                    semesters = _Semester.objects.filter(department=user.department, is_active=True).order_by('name')
+                    divisions = _Division.objects.filter(department=user.department, is_active=True).order_by('name')
+                except Exception:
+                    semesters = []
+                    divisions = []
             except Department.DoesNotExist:
                 messages.error(request, 'Selected department is not valid.')
                 return redirect('student_profile')
         
+        # Handle semester selection
+        semester_id = request.POST.get('semester')
+        if semester_id:
+            try:
+                from .models import Semester as _Semester, Division as _Division
+                user.semester = _Semester.objects.get(id=semester_id, department=user.department, is_active=True)
+                # Update divisions based on selected semester
+                divisions = _Division.objects.filter(department=user.department, semester=user.semester, is_active=True).order_by('name')
+            except Exception:
+                messages.error(request, 'Selected semester is not valid.')
+        else:
+            user.semester = None
+        
+        # Handle division selection
+        division_id = request.POST.get('division')
+        if division_id:
+            try:
+                from .models import Division as _Division
+                user.division = _Division.objects.get(id=division_id, department=user.department, is_active=True)
+            except Exception:
+                messages.error(request, 'Selected division is not valid.')
+        else:
+            user.division = None
+        
         # Check if essential fields are filled (simplified for student)
+        # Make sure profile is saved first
+        user.save()
+        
+        # Check completion - only require basic fields for students
         required_fields = [
-            user.first_name, user.last_name, user.email
+            user.first_name, user.last_name, user.email, user.department
         ]
         
         if all(required_fields):
             user.is_profile_complete = True
-            user.save()
+        else:
+            user.is_profile_complete = False
+        
+        user.save()
+        
+        if user.is_profile_complete:
             messages.success(request, 'Profile updated successfully!')
         else:
-            messages.warning(request, 'Please fill in name and email to complete your profile.')
+            messages.warning(request, 'Please fill in name, email, and department to complete your profile.')
     
     context = {
         'user': user,
         'departments': departments,
+        'semesters': semesters,
+        'divisions': divisions,
         'is_first_login': not user.is_profile_complete,
     }
     return render(request, 'student_profile.html', context)
@@ -1131,6 +1242,20 @@ def student_profile_update(request):
         
     departments = Department.objects.filter(is_active=True).order_by('name')
     
+    # Get semesters and divisions based on selected department
+    semesters = []
+    divisions = []
+    try:
+        from .models import Semester as _Semester, Division as _Division
+        if user.department:
+            semesters = _Semester.objects.filter(department=user.department, is_active=True).order_by('name')
+            if getattr(user, 'semester', None):
+                divisions = _Division.objects.filter(department=user.department, semester=user.semester, is_active=True).order_by('name')
+            else:
+                divisions = _Division.objects.filter(department=user.department, is_active=True).order_by('name')
+    except Exception:
+        pass
+    
     if request.method == 'POST':
         action = request.POST.get('action')
         
@@ -1151,23 +1276,61 @@ def student_profile_update(request):
             if department_id:
                 try:
                     user.department = Department.objects.get(id=department_id, is_active=True)
+                    # Update semesters and divisions when department changes
+                    try:
+                        from .models import Semester as _Semester, Division as _Division
+                        semesters = _Semester.objects.filter(department=user.department, is_active=True).order_by('name')
+                        divisions = _Division.objects.filter(department=user.department, is_active=True).order_by('name')
+                    except Exception:
+                        semesters = []
+                        divisions = []
                 except Department.DoesNotExist:
                     messages.error(request, 'Selected department is not valid.')
                     return redirect('student_profile_update')
             
-            # Check if all required fields are filled
+            # Handle semester selection
+            semester_id = request.POST.get('semester')
+            if semester_id:
+                try:
+                    from .models import Semester as _Semester, Division as _Division
+                    user.semester = _Semester.objects.get(id=semester_id, department=user.department, is_active=True)
+                    # Update divisions based on selected semester
+                    divisions = _Division.objects.filter(department=user.department, semester=user.semester, is_active=True).order_by('name')
+                except Exception:
+                    messages.error(request, 'Selected semester is not valid.')
+            else:
+                user.semester = None
+            
+            # Handle division selection
+            division_id = request.POST.get('division')
+            if division_id:
+                try:
+                    from .models import Division as _Division
+                    user.division = _Division.objects.get(id=division_id, department=user.department, is_active=True)
+                except Exception:
+                    messages.error(request, 'Selected division is not valid.')
+            else:
+                user.division = None
+            
+            # Save profile first
+            user.save()
+            
+            # Check completion - only require basic fields for students
             required_fields = [
-                user.first_name, user.last_name, user.dob, user.gender,
-                user.mobile_number, user.address, user.branch, user.course,
-                user.current_semester, user.department
+                user.first_name, user.last_name, user.email, user.department
             ]
             
             if all(required_fields):
                 user.is_profile_complete = True
-                user.save()
+            else:
+                user.is_profile_complete = False
+            
+            user.save()
+            
+            if user.is_profile_complete:
                 messages.success(request, 'Profile updated successfully!')
             else:
-                messages.warning(request, 'Please fill in all required fields to complete your profile.')
+                messages.warning(request, 'Please fill in name, email, and department to complete your profile.')
         
         elif action == 'change_password':
             old_password = request.POST.get('old_password')
@@ -1461,10 +1624,14 @@ def submit_exam(request, exam_id):
             score=score
         )
 
-        # Stop the exam monitoring
-        from .FaceModules.exam_monitor import ExamMonitor
-        monitor = ExamMonitor.get_instance(user.id, exam_id)
-        monitor.stop_monitoring()
+        # Stop the exam monitoring if it exists
+        try:
+            from .FaceModules.exam_monitor import ExamMonitor
+            monitor = ExamMonitor.get_instance(user.id, exam_id)
+            if monitor:
+                monitor.stop_monitoring()
+        except Exception:
+            pass  # Monitor might not exist, continue anyway
         
         # Clear monitoring session data
         if 'active_exam_id' in request.session:
@@ -1598,6 +1765,56 @@ def check_database(request):
 			})
 	
 	return render(request, 'check_db.html')
+
+def get_semesters_api(request):
+    """API endpoint to get semesters for a department"""
+    from django.http import JsonResponse
+    department_id = request.GET.get('department_id')
+    
+    if not department_id:
+        return JsonResponse({'error': 'department_id is required'}, status=400)
+    
+    try:
+        department = Department.objects.get(id=department_id, is_active=True)
+        try:
+            from .models import Semester as _Semester
+            semesters = _Semester.objects.filter(department=department, is_active=True).order_by('name')
+            semesters_data = [{'id': s.id, 'name': s.name} for s in semesters]
+        except Exception:
+            semesters_data = []
+        return JsonResponse({'semesters': semesters_data})
+    except Department.DoesNotExist:
+        return JsonResponse({'error': 'Department not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def get_divisions_api(request):
+    """API endpoint to get divisions for a department (optionally filtered by semester)"""
+    from django.http import JsonResponse
+    department_id = request.GET.get('department_id')
+    semester_id = request.GET.get('semester_id')
+    
+    if not department_id:
+        return JsonResponse({'error': 'department_id is required'}, status=400)
+    
+    try:
+        department = Department.objects.get(id=department_id, is_active=True)
+        try:
+            from .models import Division as _Division
+            divisions_query = _Division.objects.filter(department=department, is_active=True)
+            if semester_id:
+                divisions_query = divisions_query.filter(semester_id=semester_id)
+            divisions = divisions_query.order_by('name')
+            divisions_data = [{'id': d.id, 'name': d.name} for d in divisions]
+        except Exception:
+            divisions_data = []
+        return JsonResponse({'divisions': divisions_data})
+    except Department.DoesNotExist:
+        return JsonResponse({'error': 'Department not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
 
 def check_migration(request):
 	"""Check if PasswordResetOTP model exists in database"""
@@ -2099,6 +2316,50 @@ def check_database(request):
 			})
 	
 	return render(request, 'check_db.html')
+
+def get_semesters_api(request):
+    """API endpoint to get semesters for a department"""
+    from django.http import JsonResponse
+    department_id = request.GET.get('department_id')
+    
+    if not department_id:
+        return JsonResponse({'error': 'department_id is required'}, status=400)
+    
+    try:
+        department = Department.objects.get(id=department_id, is_active=True)
+        semesters = Semester.objects.filter(department=department, is_active=True).order_by('name')
+        semesters_data = [{'id': s.id, 'name': s.name} for s in semesters]
+        return JsonResponse({'semesters': semesters_data})
+    except Department.DoesNotExist:
+        return JsonResponse({'error': 'Department not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def get_divisions_api(request):
+    """API endpoint to get divisions for a department (optionally filtered by semester)"""
+    from django.http import JsonResponse
+    department_id = request.GET.get('department_id')
+    semester_id = request.GET.get('semester_id')
+    
+    if not department_id:
+        return JsonResponse({'error': 'department_id is required'}, status=400)
+    
+    try:
+        department = Department.objects.get(id=department_id, is_active=True)
+        divisions_query = Division.objects.filter(department=department, is_active=True)
+        
+        if semester_id:
+            divisions_query = divisions_query.filter(semester_id=semester_id)
+        
+        divisions = divisions_query.order_by('name')
+        divisions_data = [{'id': d.id, 'name': d.name} for d in divisions]
+        return JsonResponse({'divisions': divisions_data})
+    except Department.DoesNotExist:
+        return JsonResponse({'error': 'Department not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
 
 def check_migration(request):
 	"""Check if PasswordResetOTP model exists in database"""

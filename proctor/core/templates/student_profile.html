@@ -90,7 +90,7 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Department<span class="text-danger">*</span></label>
-                            <select name="department" class="form-control custom-input" required>
+                            <select name="department" id="department" class="form-control custom-input" required onchange="updateSemesters()">
                                 <option value="">Select Department</option>
                                 {% for dept in departments %}
                                 <option value="{{ dept.id }}" {% if user.department_id == dept.id %}selected{% endif %}>
@@ -100,7 +100,29 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Current Semester<span class="text-danger">*</span></label>
+                            <label class="form-label">Semester<span class="text-danger">*</span></label>
+                            <select name="semester" id="semester" class="form-control custom-input" required onchange="updateDivisions()">
+                                <option value="">Select Semester</option>
+                                {% for sem in semesters %}
+                                <option value="{{ sem.id }}" {% if user.semester_id == sem.id %}selected{% endif %}>
+                                    {{ sem.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Division</label>
+                            <select name="division" id="division" class="form-control custom-input">
+                                <option value="">Select Division</option>
+                                {% for div in divisions %}
+                                <option value="{{ div.id }}" {% if user.division_id == div.id %}selected{% endif %}>
+                                    {{ div.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Current Semester (Legacy)<span class="text-danger">*</span></label>
                             <input type="number" name="current_semester" class="form-control custom-input" 
                                    min="1" max="8" value="{{ user.current_semester }}" required>
                         </div>

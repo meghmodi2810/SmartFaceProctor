@@ -637,8 +637,9 @@
         </div>
 
         <!-- Questions Form -->
-        <form id="examForm" class="questions-list">
+        <form id="examForm" class="questions-list" onsubmit="submitExam(event)">
             {% csrf_token %}
+            <input type="hidden" name="exam_id" value="{{ exam.id }}">
             {% for question in questions %}
             <div class="question-card">
                 <div class="question-number">Question {{ forloop.counter }}</div>
@@ -681,6 +682,10 @@
 
 {% block extra_js %}
 <script>
+(function hideNavDuringExam(){
+    var nav = document.querySelector('.navbar');
+    if (nav) { nav.style.display = 'none'; }
+})();
 document.addEventListener('DOMContentLoaded', function() {
     const cameraModal = document.getElementById('cameraModal');
     const setupVideo = document.getElementById('setupVideo');
@@ -1089,6 +1094,62 @@ document.addEventListener('DOMContentLoaded', function() {
         const answered = document.querySelectorAll('.option-radio:checked').length;
         document.getElementById('answeredCount').textContent = answered;
         document.getElementById('submitBtn').disabled = answered < total;
+    }
+
+    // Handle form submission
+    async function submitExam(event) {
+        event.preventDefault();
+        
+        const submitBtn = document.getElementById('submitBtn');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+        
+        // Collect all answers
+        const form = document.getElementById('examForm');
+        const formData = new FormData(form);
+        const answers = {};
+        
+        // Get all radio button values
+        document.querySelectorAll('.option-radio:checked').forEach(radio => {
+            const questionId = radio.name.replace('q', '');
+            answers[questionId] = radio.value;
+        });
+        
+        try {
+            const response = await fetch('/student/submit-exam/{{ exam.id }}/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify({ answers: answers })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Stop monitoring
+                if (distractionCheckInterval) {
+                    clearInterval(distractionCheckInterval);
+                }
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+                
+                // Redirect to results page
+                window.location.href = '/student/exam-results/{{ exam.id }}/';
+            } else {
+                alert('Error submitting exam: ' + (data.error || 'Unknown error'));
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to submit exam. Please try again.');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
     }
 });
 </script>

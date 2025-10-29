@@ -2,7 +2,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.utils import timezone
-from django.db.models import Count, Q, Avg
+from django.db.models import Count, Q, Avg, F
+from django.db import models
 from .models import Exam, User, Violation, ExamAttempt, Submission
 import json
 
@@ -18,31 +19,77 @@ def faculty_live_monitoring(request):
     from django.db.models import Count, Q
     current_time = timezone.now()
     
-    ongoing_exams = Exam.objects.filter(
+    # Get all exams that are currently ongoing
+    all_exams = Exam.objects.filter(
         created_by=request.user,
-        date__lte=current_time,
-        date__gte=current_time - timezone.timedelta(hours=24)  # Last 24 hours
+        date__lte=current_time
     ).prefetch_related(
         'attempts__student',
-        'attempts__student__violation_set',
-        'attempts__student__submission_set'
+        'violations__student',
+        'assignments__student'
     ).order_by('-date')
     
-    # Annotate each attempt with violation count and frozen status
+    ongoing_exams = []
+    for exam in all_exams:
+        exam_end_time = exam.date + timezone.timedelta(minutes=exam.duration_minutes)
+        if current_time <= exam_end_time:
+            ongoing_exams.append(exam)
+    
+    # Get all students for each exam (from attempts, assignments, or submissions)
+    exam_students_data = []
     for exam in ongoing_exams:
-        for attempt in exam.attempts.all():
-            # Get violations for this student in this exam
-            violations = Violation.objects.filter(
-                exam=exam,
-                student=attempt.student
-            )
-            attempt.violation_count = violations.count()
-            # Check if student has any frozen violations
-            attempt.is_frozen = violations.filter(is_frozen=True).exists()
+        exam_end_time = exam.date + timezone.timedelta(minutes=exam.duration_minutes)
+        
+        # Get all students taking this exam (attempts, assignments, or anyone with violations)
+        attempt_students = set(exam.attempts.filter(is_active=True).values_list('student_id', flat=True))
+        assignment_students = set(exam.assignments.filter(is_active=True).values_list('student_id', flat=True))
+        violation_students = set(Violation.objects.filter(exam=exam).values_list('student_id', flat=True))
+        
+        all_student_ids = attempt_students | assignment_students | violation_students
+        
+        # Get all students taking this exam
+        students = User.objects.filter(
+            id__in=all_student_ids,
+            role='Student'
+        ).distinct()
+        
+        student_list = []
+        for student in students:
+            # Get violations
+            violations = Violation.objects.filter(exam=exam, student=student).order_by('-timestamp')
+            violation_count = violations.count()
+            is_frozen = violations.filter(is_frozen=True, freeze_cancelled_by__isnull=True).exists()
+            
+            # Get attempt info
+            attempt = ExamAttempt.objects.filter(exam=exam, student=student, is_active=True).first()
+            started_at = attempt.started_at if attempt else None
+            
+            # Get submission status
+            has_submitted = Submission.objects.filter(exam=exam, student=student).exists()
+            
+            # Get latest violations/warnings
+            recent_violations = violations[:5]  # Last 5 violations
+            
+            student_list.append({
+                'student': student,
+                'violation_count': violation_count,
+                'is_frozen': is_frozen,
+                'started_at': started_at,
+                'has_submitted': has_submitted,
+                'recent_violations': recent_violations,
+                'warnings': violation_count  # Using violation count as warnings
+            })
+        
+        exam_students_data.append({
+            'exam': exam,
+            'students': student_list,
+            'exam_end_time': exam_end_time
+        })
     
     context = {
-        'ongoing_exams': ongoing_exams,
-        'faculty': request.user
+        'exam_students_data': exam_students_data,
+        'faculty': request.user,
+        'current_time': current_time
     }
     
     return render(request, 'faculty_live_monitoring.html', context)
