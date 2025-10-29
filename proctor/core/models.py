@@ -94,15 +94,40 @@ class Violation(models.Model):
         ('Distraction', 'Distraction'),
         ('Face Missing', 'Face Missing'),
         ('Multiple Faces', 'Multiple Faces'),
+        ('Warning Limit Exceeded', 'Warning Limit Exceeded'),
+        ('Looking Away', 'Looking Away'),
     )
 
-    exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='violations')
     student = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'role': 'Student'})
-    type = models.CharField(max_length=20, choices=VIOLATION_TYPES)
+    type = models.CharField(max_length=50, choices=VIOLATION_TYPES)  # Increased from 20 to 50
     timestamp = models.DateTimeField(auto_now_add=True)
+    is_frozen = models.BooleanField(default=False)  # Track if this violation caused freeze
+    freeze_cancelled_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='cancelled_freezes', limit_choices_to={'role': 'Faculty'})
+
+    class Meta:
+        ordering = ['-timestamp']
 
     def __str__(self):
         return f"{self.student.username} - {self.type} @ {self.timestamp}"
+
+
+class ExamAttempt(models.Model):
+    """Track exam attempts to prevent multiple attempts"""
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='attempts')
+    student = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'role': 'Student'})
+    started_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+    can_reattempt = models.BooleanField(default=False)  # Faculty can enable this
+    reset_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='exam_resets', limit_choices_to={'role': 'Faculty'})
+    reset_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('exam', 'student')
+        ordering = ['-started_at']
+
+    def __str__(self):
+        return f"{self.student.username} - {self.exam.title} - Attempted at {self.started_at}"
 
 
 class Question(models.Model):

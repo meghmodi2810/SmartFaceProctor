@@ -1,0 +1,178 @@
+{% extends 'faculty_base.html' %}
+
+{% block title %}Violations - {{ student.get_full_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background: linear-gradient(135deg, #1a1f3a 0%, #2d1b4e 50%, #1a1f3a 100%);
+        min-height: 100vh;
+    }
+
+    .violations-container {
+        max-width: 1200px;
+        margin: 2rem auto;
+        padding: 0 2rem;
+    }
+
+    .page-header {
+        background: linear-gradient(135deg, #ffffff 0%, #f0f4ff 100%);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .stats-row {
+        display: flex;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        flex: 1;
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #667eea;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        color: #64748b;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.875rem;
+    }
+
+    .violations-list {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    }
+
+    .violation-item {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .violation-info {
+        flex: 1;
+    }
+
+    .violation-type {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: #1a1f3a;
+        margin-bottom: 0.5rem;
+    }
+
+    .violation-time {
+        color: #64748b;
+        font-size: 0.875rem;
+    }
+
+    .violation-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .badge-frozen {
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        color: #991b1b;
+    }
+
+    .badge-resolved {
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        color: #065f46;
+    }
+
+    .badge-logged {
+        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        color: #3730a3;
+    }
+
+    .back-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .back-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="violations-container">
+    <div class="page-header">
+        <h1 style="font-size: 2rem; font-weight: 800; color: #1a1f3a; margin-bottom: 0.5rem;">
+            ⚠️ Violations - {{ student.get_full_name|default:student.username }}
+        </h1>
+        <p style="color: #64748b; margin: 0 0 1rem 0;">{{ exam.title }}</p>
+        <a href="{% url 'faculty_live_monitoring' %}" class="back-btn">
+            <i class="fas fa-arrow-left"></i> Back to Monitoring
+        </a>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-value">{{ total_violations }}</div>
+            <div class="stat-label">Total Violations</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="color: #ef4444;">{{ frozen_violations }}</div>
+            <div class="stat-label">Frozen Violations</div>
+        </div>
+    </div>
+
+    <div class="violations-list">
+        <h2 style="font-size: 1.5rem; font-weight: 700; color: #1a1f3a; margin-bottom: 1.5rem;">Violation History</h2>
+        
+        {% for violation in violations %}
+        <div class="violation-item">
+            <div class="violation-info">
+                <div class="violation-type">{{ violation.type }}</div>
+                <div class="violation-time">{{ violation.timestamp|date:"M d, Y h:i A" }} ({{ violation.timestamp|timesince }} ago)</div>
+            </div>
+            <div>
+                {% if violation.is_frozen %}
+                <span class="violation-badge badge-frozen">Frozen</span>
+                {% elif violation.freeze_cancelled_by %}
+                <span class="violation-badge badge-resolved">Resolved by {{ violation.freeze_cancelled_by.get_full_name }}</span>
+                {% else %}
+                <span class="violation-badge badge-logged">Logged</span>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <p style="text-align: center; color: #64748b; padding: 2rem;">No violations recorded for this student</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

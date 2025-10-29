@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 from . import admin_views
 from . import session_admin_views
+from . import faculty_monitoring_views
 
 urlpatterns = [
     path('', views.home, name='home'),  # Make home the default landing page
@@ -27,6 +28,14 @@ urlpatterns = [
     path('dashboard/faculty/results/<int:exam_id>/', views.faculty_exam_results, name='faculty_exam_results'),
     path('dashboard/faculty/report-card/<int:exam_id>/<int:student_id>/', views.generate_report_card, name='generate_report_card'),
     path('dashboard/faculty/search-exams/', views.search_exams, name='search_exams'),
+    
+    # Faculty Monitoring & Analytics
+    path('faculty/live-monitoring/', faculty_monitoring_views.faculty_live_monitoring, name='faculty_live_monitoring'),
+    path('faculty/cancel-freeze/', faculty_monitoring_views.cancel_freeze, name='cancel_freeze'),
+    path('faculty/reset-attempt/', faculty_monitoring_views.reset_exam_attempt, name='reset_exam_attempt'),
+    path('faculty/violations/<int:exam_id>/<int:student_id>/', faculty_monitoring_views.student_violations_detail, name='student_violations_detail'),
+    path('faculty/analytics/', faculty_monitoring_views.student_analytics, name='student_analytics'),
+    path('faculty/analytics/exam/<int:exam_id>/', faculty_monitoring_views.exam_analytics, name='exam_analytics'),
     path('student/exams/', views.student_exams, name='student_exams'),
     path('student/profile/', views.student_profile, name='student_profile'),
     path('student/password/', views.student_password_change, name='student_password_change'),
@@ -44,6 +53,8 @@ urlpatterns = [
     path('faculty/edit_exam/<int:exam_id>/', views.edit_exam, name='edit_exam'),
     path('check_exam_status/<int:exam_id>/', views.check_exam_status, name='check_exam_status'),
     path('process-frame/', views.process_frame, name='process_frame'),
+    path('check_distraction/', views.check_distraction, name='check_distraction'),
+    path('log-violation/', views.log_violation, name='log_violation'),
     
     # Custom Admin URLs
     path('customadmin/login/', admin_views.admin_login, name='admin_login'),

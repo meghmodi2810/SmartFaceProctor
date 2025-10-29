@@ -798,11 +798,9 @@ def faculty_profile(request):
                 messages.error(request, 'Selected department is not valid.')
                 return redirect('faculty_profile')
         
-        # Check if all required fields are filled
+        # Check if essential fields are filled (simplified for faculty)
         required_fields = [
-            user.first_name, user.last_name, user.email, user.dob, 
-            user.gender, user.mobile_number, user.address,
-            user.department, user.specialization, user.qualification
+            user.first_name, user.last_name, user.email
         ]
         
         if all(required_fields):
@@ -812,7 +810,7 @@ def faculty_profile(request):
             if request.POST.get('next'):
                 return redirect(request.POST.get('next'))
         else:
-            messages.warning(request, 'Please fill in all required fields to complete your profile.')
+            messages.warning(request, 'Please fill in name and email to complete your profile.')
     
     context = {
         'user': user,
@@ -1080,11 +1078,9 @@ def student_profile(request):
                 messages.error(request, 'Selected department is not valid.')
                 return redirect('student_profile')
         
-        # Check if all required fields are filled
+        # Check if essential fields are filled (simplified for student)
         required_fields = [
-            user.first_name, user.last_name, user.dob, user.gender,
-            user.mobile_number, user.address, user.branch, user.course,
-            user.current_semester, user.department
+            user.first_name, user.last_name, user.email
         ]
         
         if all(required_fields):
@@ -1092,7 +1088,7 @@ def student_profile(request):
             user.save()
             messages.success(request, 'Profile updated successfully!')
         else:
-            messages.warning(request, 'Please fill in all required fields to complete your profile.')
+            messages.warning(request, 'Please fill in name and email to complete your profile.')
     
     context = {
         'user': user,
@@ -1384,34 +1380,30 @@ def start_mcq_exam(request, exam_id):
             messages.error(request, 'This exam has no questions available.')
             return redirect('student_exams')
 
-        # Initialize exam monitoring
-        from .FaceModules.exam_monitor import ExamMonitor
-        monitor = ExamMonitor.get_instance(user.id, exam_id)
-        monitor.start_monitoring()
-        
+        # Check if student has already attempted the exam
+        from .models import ExamAttempt
+        existing_attempt = ExamAttempt.objects.filter(exam=exam, student=user).first()
+        if existing_attempt and not existing_attempt.can_reattempt:
+            messages.error(request, 'You have already attempted this exam. Contact faculty if you need to reattempt.')
+            return redirect('student_exams')
+
+        # Create exam attempt record
+        if existing_attempt:
+            # Re-attempting - reset the record
+            existing_attempt.can_reattempt = False
+            existing_attempt.save()
+        else:
+            # First attempt - create new record
+            ExamAttempt.objects.create(exam=exam, student=user)
+
         # Store monitoring session info in user's session
+        # Note: ExamMonitor initialization is deferred to avoid slow page load
         request.session['active_exam_id'] = exam_id
         request.session['monitoring_active'] = True
-        
-        # Prepare questions data for JavaScript
-        questions_data = []
-        for question in questions:
-            questions_data.append({
-                'id': question.id,
-                'text': question.text,
-                'options': [
-                    question.option_a,
-                    question.option_b,
-                    question.option_c,
-                    question.option_d
-                ],
-                'correct_answer': question.answer
-            })
         
         context = {
             'exam': exam,
             'questions': questions,
-            'questions_data': json.dumps(questions_data),
             'student': user,
             'exam_duration': exam.duration_minutes,
             'exam_end_time': exam_end_time.isoformat()
@@ -1826,21 +1818,126 @@ def check_distraction(request):
     try:
         data = json.loads(request.body)
         frame_data = data.get('frame')
+        exam_id = data.get('exam_id')
+        warning_limit = data.get('warning_limit', 3)
+        absence_threshold = data.get('absence_threshold', 10)
+        
+        if not frame_data:
+            return JsonResponse({'error': 'No frame data provided'}, status=400)
         
         # Convert base64 frame to cv2 image
         encoded_data = frame_data.split(',')[1]
         nparr = np.frombuffer(base64.b64decode(encoded_data), np.uint8)
         frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         
-        # Process frame for distractions
-        is_distracted, distractions = distraction_detector.is_distracted(frame)
+        # Get or create detector instance for this user's exam session
+        session_key = f'detector_{request.user.id}_{exam_id}'
         
-        return JsonResponse({
-            'is_distracted': is_distracted,
-            'distractions': distractions
-        })
+        if session_key not in request.session:
+            # Create new detector for this session
+            detector = DistractionDetector()
+            
+            # Get exam settings
+            if exam_id:
+                try:
+                    exam = Exam.objects.get(id=exam_id)
+                    detector.set_warning_threshold(exam.warning_limit)
+                    detector.set_absence_threshold(exam.absence_threshold)
+                except Exam.DoesNotExist:
+                    detector.set_warning_threshold(warning_limit)
+                    detector.set_absence_threshold(absence_threshold)
+            else:
+                detector.set_warning_threshold(warning_limit)
+                detector.set_absence_threshold(absence_threshold)
+            
+            # Store detector state in session
+            request.session[session_key] = {
+                'warning_count': 0,
+                'is_frozen': False,
+                'freeze_start_time': None,
+                'last_face_time': None,
+                'absence_start_time': None
+            }
+        
+        # Get detector state from session
+        detector_state = request.session.get(session_key, {})
+        
+        # Create detector with current state
+        detector = DistractionDetector()
+        if exam_id:
+            try:
+                exam = Exam.objects.get(id=exam_id)
+                detector.set_warning_threshold(exam.warning_limit)
+                detector.set_absence_threshold(exam.absence_threshold)
+            except Exam.DoesNotExist:
+                detector.set_warning_threshold(warning_limit)
+                detector.set_absence_threshold(absence_threshold)
+        
+        # Check if faculty has cancelled freeze for this student
+        if exam_id and detector_state.get('is_frozen', False):
+            try:
+                exam = Exam.objects.get(id=exam_id)
+                # Check if there are any frozen violations that have been cancelled by faculty
+                cancelled_freeze = Violation.objects.filter(
+                    exam=exam,
+                    student=request.user,
+                    is_frozen=False,  # Changed from True to False by faculty
+                    freeze_cancelled_by__isnull=False
+                ).exists()
+                
+                if cancelled_freeze:
+                    # Faculty has cancelled the freeze - unfreeze immediately
+                    detector_state['is_frozen'] = False
+                    detector_state['freeze_start_time'] = None
+                    print(f"Freeze cancelled by faculty for student {request.user.id}")
+            except Exam.DoesNotExist:
+                pass
+        
+        # Restore detector state
+        detector.warning_count = detector_state.get('warning_count', 0)
+        detector.is_exam_frozen = detector_state.get('is_frozen', False)
+        if detector_state.get('freeze_start_time'):
+            from datetime import datetime
+            detector.freeze_start_time = datetime.fromisoformat(detector_state['freeze_start_time'])
+        
+        # Process frame for distractions
+        result = detector.detect_distraction(frame)
+        
+        # Update session state
+        request.session[session_key] = {
+            'warning_count': detector.warning_count,
+            'is_frozen': detector.is_exam_frozen,
+            'freeze_start_time': detector.freeze_start_time.isoformat() if detector.freeze_start_time else None,
+            'last_face_time': None,
+            'absence_start_time': None
+        }
+        request.session.modified = True
+        
+        # Log violation if warning issued
+        if result.get('warning_message') and exam_id and request.user.is_authenticated:
+            try:
+                exam = Exam.objects.get(id=exam_id)
+                violation_type = 'Face Missing' if 'Face not detected' in result['warning_message'] else 'Distraction'
+                
+                # Only create violation on new warnings to avoid duplicates
+                # Check if we've incremented warning count in this call
+                previous_count = detector_state.get('warning_count', 0)
+                if result.get('warning_count', 0) > previous_count:
+                    violation = Violation.objects.create(
+                        exam=exam,
+                        student=request.user,
+                        type=violation_type,
+                        is_frozen=result.get('is_frozen', False)
+                    )
+                    print(f"Violation logged: {violation_type}, Warning {result.get('warning_count')}/{exam.warning_limit}")
+            except Exam.DoesNotExist:
+                pass
+        
+        return JsonResponse(result)
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
 
 def detect_face(frame):
@@ -1864,20 +1961,31 @@ def log_violation(request):
     
     try:
         data = json.loads(request.body)
-        violation_type = data.get('type')
-        details = data.get('details')
+        exam_id = data.get('exam_id')
+        violation_type = data.get('violation_type', 'Distraction')
+        details = data.get('details', '')
+        
+        if not exam_id:
+            return JsonResponse({'error': 'Exam ID is required'}, status=400)
+        
+        # Get exam
+        try:
+            exam = Exam.objects.get(id=exam_id)
+        except Exam.DoesNotExist:
+            return JsonResponse({'error': 'Exam not found'}, status=404)
         
         # Create violation record
         Violation.objects.create(
-            user=request.user,
-            violation_type=violation_type,
-            details=details,
-            timestamp=timezone.now()
+            exam=exam,
+            student=request.user,
+            type=violation_type
         )
         
         return JsonResponse({'status': 'success'})
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
 
 def test_otp_system(request):

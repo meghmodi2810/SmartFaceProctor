@@ -18,7 +18,14 @@ class DistractionDetector:
         self.warning_count = 0
         self.warning_limit = 3  # Default warning limit
         self.absence_threshold = 10  # Default absence threshold in seconds
+        self.distraction_threshold = 10  # Seconds of continuous distraction before warning
+        
+        # Tracking times
         self.last_face_detected_time = None
+        self.distraction_start_time = None  # Track when distraction started
+        self.last_focused_time = None  # Track when student was last focused
+        
+        # Freeze management
         self.is_exam_frozen = False
         self.freeze_start_time = None
         self.freeze_duration = 300  # 5 minutes in seconds
@@ -84,8 +91,9 @@ class DistractionDetector:
             else:
                 time_without_face = (current_time - self.last_face_detected_time).total_seconds()
                 if time_without_face >= self.absence_threshold:
-                    response['warning_message'] = 'Face not detected'
-                    self._handle_warning()
+                    response['warning_message'] = f'Face not detected for {int(time_without_face)}s'
+                    self._handle_warning('Face Missing')
+                    self.last_face_detected_time = current_time  # Reset timer after warning
             return response
 
         # Face is detected
@@ -114,21 +122,42 @@ class DistractionDetector:
         nose_x = int(nose.x * frame_width)
         head_offset = abs(nose_x - frame_center_x)
 
-        # Detect distractions
+        # Detect distractions - accumulate time before warning
+        is_distracted = False
+        distraction_reason = ''
+        
         if left_eye_offset > self.GAZE_THRESHOLD or right_eye_offset > self.GAZE_THRESHOLD:
-            response['warning_message'] = 'Looking away from screen'
-            self._handle_warning()
+            is_distracted = True
+            distraction_reason = 'Looking away from screen'
         elif vertical_offset > self.GAZE_THRESHOLD:
-            response['warning_message'] = 'Looking too high/low'
-            self._handle_warning()
+            is_distracted = True
+            distraction_reason = 'Looking too high/low'
         elif head_offset > self.HEAD_MOVEMENT_THRESHOLD:
-            response['warning_message'] = 'Head position too far from center'
-            self._handle_warning()
+            is_distracted = True
+            distraction_reason = 'Head position off-center'
+        
+        # Handle distraction accumulation
+        if is_distracted:
+            if self.distraction_start_time is None:
+                self.distraction_start_time = current_time
+            else:
+                distraction_duration = (current_time - self.distraction_start_time).total_seconds()
+                if distraction_duration >= self.distraction_threshold:
+                    response['warning_message'] = f'{distraction_reason} for {int(distraction_duration)}s'
+                    self._handle_warning('Looking Away')
+                    self.distraction_start_time = current_time  # Reset timer after warning
+                else:
+                    # Show message but don't warn yet
+                    response['warning_message'] = f'{distraction_reason} ({int(distraction_duration)}s)'
+        else:
+            # Student is focused - reset distraction timer
+            self.distraction_start_time = None
+            self.last_focused_time = current_time
 
         return response
 
-    def _handle_warning(self):
-        """Handle warning with cooldown period"""
+    def _handle_warning(self, violation_type='Distraction'):
+        """Handle warning with cooldown period - increments warning count and freezes if limit exceeded"""
         current_time = datetime.now()
         
         # Check if enough time has passed since last warning
@@ -137,22 +166,36 @@ class DistractionDetector:
             
             self.warning_count += 1
             self.last_warning_time = current_time
+            self.last_violation_type = violation_type  # Store for logging
             
+            # Check if warning limit exceeded - freeze the exam
             if self.warning_count >= self.warning_limit:
                 self.freeze_exam()
+            
+            return True  # Indicate a warning was issued
+        return False  # Warning was in cooldown
 
     def freeze_exam(self):
-        """Freeze the exam"""
+        """Freeze the exam for the duration specified"""
         if not self.is_exam_frozen:
             self.is_exam_frozen = True
             self.freeze_start_time = datetime.now()
+            print(f"EXAM FROZEN at {self.freeze_start_time} for {self.freeze_duration} seconds")
 
     def unfreeze_exam(self):
-        """Unfreeze the exam and reset warnings"""
+        """Unfreeze the exam and reset warnings after freeze duration ends"""
         self.is_exam_frozen = False
         self.freeze_start_time = None
-        self.warning_count = 0
+        self.warning_count = 0  # Reset warnings after freeze
         self.last_warning_time = None
+        self.distraction_start_time = None  # Reset distraction timer
+        print(f"EXAM UNFROZEN - warnings reset")
+    
+    def faculty_unfreeze_exam(self):
+        """Unfreeze exam by faculty intervention - doesn't reset warnings"""
+        self.is_exam_frozen = False
+        self.freeze_start_time = None
+        print(f"EXAM UNFROZEN BY FACULTY")
 
 def main():
     """Run the enhanced distraction detection system."""

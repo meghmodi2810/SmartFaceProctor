@@ -1,0 +1,342 @@
+{% extends 'faculty_base.html' %}
+
+{% block title %}Live Exam Monitoring{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background: linear-gradient(135deg, #1a1f3a 0%, #2d1b4e 50%, #1a1f3a 100%);
+        min-height: 100vh;
+    }
+
+    .monitoring-container {
+        max-width: 1600px;
+        margin: 2rem auto;
+        padding: 0 2rem;
+    }
+
+    .page-header {
+        background: linear-gradient(135deg, #ffffff 0%, #f0f4ff 100%);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .page-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #1a1f3a;
+        margin-bottom: 0.5rem;
+    }
+
+    .exam-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+        border-radius: 20px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .exam-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1a1f3a;
+        margin-bottom: 1rem;
+    }
+
+    .students-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 0.5rem;
+    }
+
+    .students-table th {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem;
+        text-align: left;
+        font-weight: 700;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+    }
+
+    .students-table th:first-child {
+        border-radius: 10px 0 0 10px;
+    }
+
+    .students-table th:last-child {
+        border-radius: 0 10px 10px 0;
+    }
+
+    .students-table td {
+        background: white;
+        padding: 1rem;
+        border-top: 1px solid #e2e8f0;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .students-table td:first-child {
+        border-left: 1px solid #e2e8f0;
+        border-radius: 10px 0 0 10px;
+    }
+
+    .students-table td:last-child {
+        border-right: 1px solid #e2e8f0;
+        border-radius: 0 10px 10px 0;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 0.375rem 0.75rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+    }
+
+    .status-active {
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        color: #065f46;
+    }
+
+    .status-frozen {
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        color: #991b1b;
+    }
+
+    .status-completed {
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        color: #1e40af;
+    }
+
+    .warning-count {
+        font-weight: 700;
+        color: #dc2626;
+        font-size: 1.125rem;
+    }
+
+    .action-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin: 0 0.25rem;
+    }
+
+    .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .action-btn.danger {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    }
+
+    .action-btn.success {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #64748b;
+    }
+
+    .refresh-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .refresh-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="monitoring-container">
+    <div class="page-header">
+        <h1 class="page-title">🔴 Live Exam Monitoring</h1>
+        <p style="color: #64748b; margin: 0;">Monitor active exams and manage student violations in real-time</p>
+    </div>
+
+    {% if ongoing_exams %}
+        {% for exam in ongoing_exams %}
+        <div class="exam-card" id="exam-{{ exam.id }}">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <div>
+                    <h2 class="exam-title">{{ exam.title }}</h2>
+                    <p style="color: #64748b; margin: 0;">{{ exam.date|date:"M d, Y - h:i A" }} | Duration: {{ exam.duration_minutes }} mins</p>
+                </div>
+                <button class="refresh-btn" onclick="refreshExam({{ exam.id }})">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+
+            <table class="students-table">
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Status</th>
+                        <th>Warnings</th>
+                        <th>Violations</th>
+                        <th>Time in Exam</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="students-{{ exam.id }}">
+                    {% for attempt in exam.attempts.all %}
+                    {% if not attempt.student.submission_set.filter.exists %}
+                    <tr id="student-{{ attempt.student.id }}-exam-{{ exam.id }}">
+                        <td>
+                            <strong>{{ attempt.student.get_full_name|default:attempt.student.username }}</strong><br>
+                            <small style="color: #64748b;">{{ attempt.student.username }}</small>
+                        </td>
+                        <td>
+                            {% if attempt.is_frozen %}
+                            <span class="status-badge status-frozen">Frozen</span>
+                            {% else %}
+                            <span class="status-badge status-active">Active</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="warning-count">{{ attempt.violation_count }}</span> / {{ exam.warning_limit }}
+                        </td>
+                        <td>
+                            {{ attempt.violation_count }}
+                        </td>
+                        <td>
+                            {{ attempt.started_at|timesince }} ago
+                        </td>
+                        <td>
+                            {% if attempt.is_frozen %}
+                            <button class="action-btn success" onclick="cancelFreeze({{ exam.id }}, {{ attempt.student.id }})">
+                                <i class="fas fa-unlock"></i> Unfreeze
+                            </button>
+                            {% endif %}
+                            <button class="action-btn" onclick="resetAttempt({{ exam.id }}, {{ attempt.student.id }})">
+                                <i class="fas fa-redo"></i> Reset
+                            </button>
+                            <button class="action-btn danger" onclick="viewViolations({{ exam.id }}, {{ attempt.student.id }})">
+                                <i class="fas fa-exclamation-triangle"></i> View Details
+                            </button>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #64748b; padding: 2rem;">
+                            No students currently taking this exam
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="exam-card">
+            <div class="empty-state">
+                <i class="fas fa-clipboard-list" style="font-size: 4rem; color: #cbd5e1; margin-bottom: 1rem;"></i>
+                <h3 style="color: #475569;">No Active Exams</h3>
+                <p>There are no ongoing exams at the moment.</p>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+async function cancelFreeze(examId, studentId) {
+    if (!confirm('Cancel the freeze timer for this student?')) return;
+    
+    try {
+        const response = await fetch('/faculty/cancel-freeze/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ exam_id: examId, student_id: studentId })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            alert('Freeze cancelled successfully');
+            refreshExam(examId);
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to cancel freeze');
+    }
+}
+
+async function resetAttempt(examId, studentId) {
+    if (!confirm('Allow this student to reattempt the exam? This will reset their current attempt.')) return;
+    
+    try {
+        const response = await fetch('/faculty/reset-attempt/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ exam_id: examId, student_id: studentId })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            alert('Attempt reset successfully. Student can now retake the exam.');
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to reset attempt');
+    }
+}
+
+function viewViolations(examId, studentId) {
+    window.location.href = `/faculty/violations/${examId}/${studentId}/`;
+}
+
+function refreshExam(examId) {
+    location.reload();
+}
+
+// Auto-refresh every 10 seconds
+setInterval(() => {
+    location.reload();
+}, 10000);
+</script>
+{% endblock %}

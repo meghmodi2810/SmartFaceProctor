@@ -154,18 +154,6 @@
             <li><a href="{% url 'student_dashboard' %}" class="{% if request.resolver_match.url_name == 'student_dashboard' %}active{% endif %}">
                 <i class="fas fa-home me-1"></i>Dashboard
             </a></li>
-            <li><a href="{% url 'student_exams' %}" class="{% if request.resolver_match.url_name == 'student_exams' %}active{% endif %}">
-                <i class="fas fa-file-alt me-1"></i>Exams
-            </a></li>
-            <li><a href="{% url 'student_profile' %}" class="{% if 'profile' in request.resolver_match.url_name %}active{% endif %}">
-                <i class="fas fa-user-circle me-1"></i>Profile
-                {% if not student.is_profile_complete %}
-                <span class="badge bg-warning text-dark">Incomplete</span>
-                {% endif %}
-            </a></li>
-            <li><a href="{% url 'report_bug' %}" class="{% if request.resolver_match.url_name == 'report_bug' %}active{% endif %}">
-                <i class="fas fa-bug me-1"></i>Report Bug
-            </a></li>
             <li><a href="{% url 'logout' %}">
                 <i class="fas fa-sign-out-alt me-1"></i>Logout
             </a></li>
