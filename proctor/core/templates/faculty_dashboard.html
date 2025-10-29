@@ -109,97 +109,6 @@
         margin-bottom: 1rem;
         animation: fadeInDash 0.6s ease-out forwards;
     }
-    
-    /* Modal Styles */
-    .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-        backdrop-filter: blur(4px);
-    }
-    
-    .modal-content {
-        background: white;
-        padding: 2.5rem;
-        border-radius: 16px;
-        max-width: 500px;
-        width: 90%;
-        max-height: 90vh;
-        overflow-y: auto;
-        position: relative;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-        animation: modalOpen 0.3s ease-out forwards;
-    }
-    
-    @keyframes modalOpen {
-        from { opacity: 0; transform: scale(0.95); }
-        to { opacity: 1; transform: scale(1); }
-    }
-    
-    .close-btn {
-        position: absolute;
-        top: 1rem;
-        right: 1.5rem;
-        font-size: 1.5rem;
-        cursor: pointer;
-        color: #6b7280;
-        font-weight: bold;
-        transition: color 0.2s;
-    }
-    
-    .close-btn:hover {
-        color: #2d3e50;
-    }
-    
-    .form-group {
-        margin-bottom: 1.5rem;
-    }
-    
-    .form-group label {
-        display: block;
-        margin-bottom: 0.5rem;
-        font-weight: 600;
-        color: #2d3e50;
-    }
-    
-    .form-control {
-        width: 100%;
-        padding: 0.75rem;
-        border: 2px solid #e0e7ff;
-        border-radius: 8px;
-        font-size: 1rem;
-        transition: all 0.2s ease;
-    }
-    
-    .form-control:focus {
-        outline: none;
-        border-color: #4f8cff;
-        box-shadow: 0 0 0 3px rgba(79,140,255,0.1);
-    }
-    
-    .submit-btn {
-        background: linear-gradient(90deg, #4f8cff 60%, #2d3e50 100%);
-        color: white;
-        width: 100%;
-        padding: 0.75rem;
-        border: none;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-    
-    .submit-btn:hover {
-        background: linear-gradient(90deg, #2d3e50 60%, #4f8cff 100%);
-        transform: translateY(-2px);
-    }
 </style>
 {% endblock %}
 
@@ -230,9 +139,9 @@
             <div class="panel">
                 <h3><i class="fas fa-file-alt"></i>Schedule Exam</h3>
                 <p>Create and schedule a new exam for your students</p>
-                <button id="scheduleExamBtn" {% if not faculty.is_profile_complete %}disabled{% endif %}>
-                    Schedule Exam
-                </button>
+                <a href="/dashboard/faculty/schedule/" class="btn-link">
+                    <button {% if not faculty.is_profile_complete %}disabled{% endif %}>Schedule Exam</button>
+                </a>
             </div>
 
             <div class="panel">
@@ -269,72 +178,8 @@
                 </a>
             </div>
         </div>
-
-        <!-- Modal Overlay and Form -->
-        <div id="scheduleExamModal" class="modal-overlay">
-            <div class="modal-content">
-                <span class="close-btn" id="closeModalBtn">&times;</span>
-                <h3>Schedule New Exam</h3>
-                <form id="scheduleExamForm" method="post" action="{% url 'schedule_exam' %}">
-                    {% csrf_token %}
-                    <div class="form-group">
-                        <label for="examName">Exam Name</label>
-                        <input type="text" class="form-control" id="examName" name="examName" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="warningLimit">Warning Limit</label>
-                        <input type="number" class="form-control" id="warningLimit" name="warningLimit" min="1" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="examDate">Exam Date</label>
-                        <input type="date" class="form-control" id="examDate" name="examDate" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="examTime">Exam Time</label>
-                        <input type="time" class="form-control" id="examTime" name="examTime" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="freezeTime">Exam Duration (Minutes)</label>
-                        <select class="form-control" id="freezeTime" name="freezeTime" required>
-                            <option value="">Select duration</option>
-                            <option value="15">15 minutes</option>
-                            <option value="30">30 minutes</option>
-                            <option value="45">45 minutes</option>
-                            <option value="60">1 hour</option>
-                            <option value="90">1.5 hours</option>
-                            <option value="120">2 hours</option>
-                            <option value="180">3 hours</option>
-                            <option value="240">4 hours</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="sheetUrl">Google Sheet URL (Questions)</label>
-                        <input type="url" class="form-control" id="sheetUrl" name="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/..." required>
-                    </div>
-                    <button type="submit" class="submit-btn">Schedule Exam</button>
-                </form>
-            </div>
+</div>
         </div>
     </div>
 </div>
-
-<script>
-document.getElementById('scheduleExamBtn').onclick = function() {
-    if (!this.disabled) {
-        document.getElementById('scheduleExamModal').style.display = 'flex';
-    }
-};
-document.getElementById('closeModalBtn').onclick = function() {
-    document.getElementById('scheduleExamModal').style.display = 'none';
-};
-window.onclick = function(event) {
-    var modal = document.getElementById('scheduleExamModal');
-    if (event.target == modal) {
-        modal.style.display = "none";
-    }
-};
-
-// Set minimum date for exam scheduling to today
-document.getElementById('examDate').min = new Date().toISOString().split('T')[0];
-</script>
 {% endblock %}

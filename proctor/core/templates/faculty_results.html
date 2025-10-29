@@ -128,6 +128,65 @@
     .no-exams p {
         color: #6b7280;
     }
+
+    .search-container {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        margin-bottom: 2rem;
+    }
+    
+    .search-form {
+        display: grid;
+        grid-template-columns: 1fr auto auto auto;
+        gap: 1rem;
+        align-items: end;
+    }
+    
+    .search-input {
+        padding: 0.75rem;
+        border: 2px solid #e0e7ff;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.2s;
+    }
+    
+    .search-input:focus {
+        border-color: #4f8cff;
+        box-shadow: 0 0 0 3px rgba(79,140,255,0.1);
+        outline: none;
+    }
+    
+    .score-range {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    
+    .score-input {
+        width: 80px;
+        padding: 0.75rem;
+        border: 2px solid #e0e7ff;
+        border-radius: 8px;
+        font-size: 1rem;
+    }
+    
+    .search-btn {
+        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    
+    .search-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(79, 140, 255, 0.4);
+    }
 </style>
 {% endblock %}
 
@@ -138,8 +197,21 @@
         <p>View and analyze student performance across all your exams</p>
     </div>
     
-    {% if exams %}
-    <div class="exams-grid">
+    <div class="search-container">
+        <div class="search-form">
+            <div>
+                <input type="text" id="searchQuery" class="search-input" placeholder="Search exams by title...">
+            </div>
+            <div class="score-range">
+                <input type="number" id="minScore" class="score-input" placeholder="Min %" min="0" max="100">
+                <span>to</span>
+                <input type="number" id="maxScore" class="score-input" placeholder="Max %" min="0" max="100">
+            </div>
+            <button class="search-btn" onclick="searchExams()">Search</button>
+        </div>
+    </div>
+    
+    <div class="exams-grid" id="examsGrid">
         {% for exam in exams %}
         <div class="exam-card">
             <div class="exam-title">{{ exam.title }}</div>
@@ -170,12 +242,82 @@
         </div>
         {% endfor %}
     </div>
-    {% else %}
-    <div class="no-exams">
-        <div class="no-exams-icon">📝</div>
-        <h3>No Exams Yet</h3>
-        <p>Create your first exam to see results here</p>
+    
+    <div class="no-exams" id="noExams" style="display: none;">
+        <div class="no-exams-icon">🔍</div>
+        <h3>No Exams Found</h3>
+        <p>Try adjusting your search criteria</p>
     </div>
-    {% endif %}
 </div>
+
+<script>
+function searchExams() {
+    const query = document.getElementById('searchQuery').value;
+    const minScore = document.getElementById('minScore').value;
+    const maxScore = document.getElementById('maxScore').value;
+    
+    let url = '/dashboard/faculty/search-exams/?q=' + encodeURIComponent(query);
+    if (minScore) url += '&min_score=' + minScore;
+    if (maxScore) url += '&max_score=' + maxScore;
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            const examsGrid = document.getElementById('examsGrid');
+            const noExams = document.getElementById('noExams');
+            
+            if (data.exams && data.exams.length > 0) {
+                examsGrid.innerHTML = data.exams.map(exam => `
+                    <div class="exam-card">
+                        <div class="exam-title">${exam.title}</div>
+                        <div class="exam-date">📅 ${exam.date}</div>
+                        
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-label">Submissions</div>
+                                <div class="stat-value">${exam.total_submissions}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Average Score</div>
+                                <div class="stat-value">${exam.average_score}%</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Highest Score</div>
+                                <div class="stat-value">${exam.highest_score}%</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Lowest Score</div>
+                                <div class="stat-value">${exam.lowest_score}%</div>
+                            </div>
+                        </div>
+                        
+                        <a href="/dashboard/faculty/exam-results/${exam.id}" class="view-btn">
+                            View Detailed Results →
+                        </a>
+                    </div>
+                `).join('');
+                examsGrid.style.display = 'grid';
+                noExams.style.display = 'none';
+            } else {
+                examsGrid.style.display = 'none';
+                noExams.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while searching exams');
+        });
+}
+
+// Add event listeners for enter key
+document.getElementById('searchQuery').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') searchExams();
+});
+document.getElementById('minScore').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') searchExams();
+});
+document.getElementById('maxScore').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') searchExams();
+});
+</script>
 {% endblock %}

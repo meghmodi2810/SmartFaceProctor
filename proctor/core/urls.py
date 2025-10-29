@@ -26,6 +26,7 @@ urlpatterns = [
     path('dashboard/faculty/results/', views.faculty_results, name='faculty_results'),
     path('dashboard/faculty/results/<int:exam_id>/', views.faculty_exam_results, name='faculty_exam_results'),
     path('dashboard/faculty/report-card/<int:exam_id>/<int:student_id>/', views.generate_report_card, name='generate_report_card'),
+    path('dashboard/faculty/search-exams/', views.search_exams, name='search_exams'),
     path('student/exams/', views.student_exams, name='student_exams'),
     path('student/profile/', views.student_profile, name='student_profile'),
     path('student/password/', views.student_password_change, name='student_password_change'),

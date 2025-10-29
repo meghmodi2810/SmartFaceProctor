@@ -1,0 +1,71 @@
+<script>
+    let distractionCheckInterval;
+    
+    async function startDistractionDetection() {
+        const video = document.getElementById('videoElement');
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        
+        // Check for distractions every 5 seconds
+        distractionCheckInterval = setInterval(checkForDistractions, 5000);
+    }
+    
+    async function checkForDistractions() {
+        const video = document.getElementById('videoElement');
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+        
+        // Convert canvas to base64
+        const frame = canvas.toDataURL('image/jpeg');
+        
+        try {
+            const response = await fetch('/check_distraction/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ frame: frame })
+            });
+            
+            const data = await response.json();
+            if (data.is_distracted) {
+                // Log violation
+                await logViolation(data.distractions.join(', '));
+            }
+        } catch (error) {
+            console.error('Error checking for distractions:', error);
+        }
+    }
+    
+    async function logViolation(details) {
+        try {
+            await fetch('/log_violation/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    type: 'distraction',
+                    details: details
+                })
+            });
+        } catch (error) {
+            console.error('Error logging violation:', error);
+        }
+    }
+    
+    // Start detection when page loads
+    window.addEventListener('load', startDistractionDetection);
+    
+    // Cleanup on page unload
+    window.addEventListener('unload', () => {
+        if (distractionCheckInterval) {
+            clearInterval(distractionCheckInterval);
+        }
+    });
+</script>

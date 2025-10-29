@@ -1757,49 +1757,91 @@ def process_frame(request):
         # Convert PIL image to OpenCV format
         opencv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
         
+        # Get exam warning settings
+        warning_limit = 3  # default
+        absence_threshold = 5  # default
+        if exam_id:
+            try:
+                exam = Exam.objects.get(id=exam_id)
+                warning_desc = exam.description or ""
+                if "Warning Limit:" in warning_desc:
+                    warning_limit = int(warning_desc.split("Warning Limit:")[1].strip())
+            except (Exam.DoesNotExist, ValueError, IndexError):
+                pass
+
         # Get or create detector instance for this exam session
         detector_key = f'detector_{request.user.id}_{exam_id}'
         if not hasattr(request, detector_key):
             detector = DistractionDetector()
-            if exam_id:
-                try:
-                    exam = Exam.objects.get(id=exam_id)
-                    detector.set_warning_threshold(int(exam.warning_limit))
-                    detector.set_absence_threshold(exam.absence_threshold)
-                except Exam.DoesNotExist:
-                    pass
+            detector.set_warning_threshold(warning_limit)
+            detector.set_absence_threshold(absence_threshold)
             setattr(request, detector_key, detector)
         else:
             detector = getattr(request, detector_key)
 
-        result = detector.detect_distraction(opencv_image)
+        # Process frame
+        processed_frame, is_distracted, distractions = detector.is_distracted(opencv_image)
         
-        # Prepare response data
-        response_data = {
-            'success': True,
-            'face_detected': result['face_detected'],
-            'warning_message': result['warning_message'],
-            'warning_count': result['warning_count'],
-            'is_frozen': result['is_frozen'],
-            'freeze_time_left': result['freeze_time_left'] if result['is_frozen'] else 0
-        }
+        # Check for multiple faces
+        if len(detector.face_mesh.process(cv2.cvtColor(opencv_image, cv2.COLOR_BGR2RGB)).multi_face_landmarks or []) > 1:
+            distractions.append("Multiple faces detected")
+            is_distracted = True
+
+        warning_message = ", ".join(distractions) if distractions else ""
         
-        # Record violation if there's a warning
-        if exam_id and result['warning_message'] and request.user.is_authenticated:
-            violation_type = 'Face Missing' if not result['face_detected'] else 'Distraction'
+        # Record violation if there are distractions
+        if exam_id and is_distracted and request.user.is_authenticated:
+            violation_type = 'Face Missing' if 'Face not detected' in warning_message else 'Distraction'
+            details = warning_message or 'Unknown distraction'
             Violation.objects.create(
                 exam_id=exam_id,
                 student=request.user,
-                type=violation_type
+                type=violation_type,
+                details=details
             )
         
-        return JsonResponse(response_data)
+        # Convert processed frame back to base64 for response
+        _, buffer = cv2.imencode('.jpg', processed_frame)
+        processed_frame_base64 = base64.b64encode(buffer).decode('utf-8')
+
+        return JsonResponse({
+            'success': True,
+            'processed_frame': f'data:image/jpeg;base64,{processed_frame_base64}',
+            'is_distracted': is_distracted,
+            'warning_message': warning_message,
+            'warning_count': len(distractions) if distractions else 0
+        })
         
     except Exception as e:
         return JsonResponse({
             'success': False,
             'error': str(e)
         }, status=500)
+
+@login_required
+def check_distraction(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        frame_data = data.get('frame')
+        
+        # Convert base64 frame to cv2 image
+        encoded_data = frame_data.split(',')[1]
+        nparr = np.frombuffer(base64.b64decode(encoded_data), np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        # Process frame for distractions
+        is_distracted, distractions = distraction_detector.is_distracted(frame)
+        
+        return JsonResponse({
+            'is_distracted': is_distracted,
+            'distractions': distractions
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 def detect_face(frame):
     # Use existing face detection logic from DistractionDetector
@@ -1814,3 +1856,225 @@ def detect_face(frame):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = face_cascade.detectMultiScale(gray, 1.3, 5)
         return len(faces) > 0
+
+@login_required
+def log_violation(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        violation_type = data.get('type')
+        details = data.get('details')
+        
+        # Create violation record
+        Violation.objects.create(
+            user=request.user,
+            violation_type=violation_type,
+            details=details,
+            timestamp=timezone.now()
+        )
+        
+        return JsonResponse({'status': 'success'})
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+def test_otp_system(request):
+	"""Test view to debug OTP system"""
+	if request.method == 'POST':
+		email = request.POST.get('email')
+		if email:
+			try:
+				# Test user lookup
+				from .models import User
+				try:
+					user = User.objects.get(email=email)
+					print(f"✓ User found: {user.username}")
+				except User.DoesNotExist:
+					print(f"✗ User not found for email: {email}")
+					return JsonResponse({'error': 'User not found'})
+				
+				# Test if PasswordResetOTP model exists
+				try:
+					from .models import PasswordResetOTP
+					print("✓ PasswordResetOTP model imported successfully")
+				except ImportError as e:
+					print(f"✗ Failed to import PasswordResetOTP model: {e}")
+					return JsonResponse({'error': f'Model import failed: {e}'})
+				
+				# Test OTP creation
+				import random
+				otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+				try:
+					otp_obj = PasswordResetOTP.objects.create(email=email, otp=otp)
+					print(f"✓ OTP created: {otp_obj.id}")
+				except Exception as e:
+					print(f"✗ Failed to create OTP: {e}")
+					return JsonResponse({'error': f'OTP creation failed: {e}'})
+				
+				# Test email sending
+				try:
+					from .Modules.send_email_using_sheets import SmartFaceProctorMailer
+					mailer = SmartFaceProctorMailer()
+					print("✓ Mailer created successfully")
+				except Exception as e:
+					print(f"✗ Failed to create mailer: {e}")
+					# Clean up OTP
+					otp_obj.delete()
+					return JsonResponse({'error': f'Mailer creation failed: {e}'})
+				
+				try:
+					result = mailer.send_otp_email(email, otp)
+					print(f"✓ Email result: {result}")
+				except Exception as e:
+					print(f"✗ Failed to send email: {e}")
+					# Clean up OTP
+					otp_obj.delete()
+					return JsonResponse({'error': f'Email sending failed: {e}'})
+				
+				# Clean up test OTP
+				otp_obj.delete()
+				
+				return JsonResponse({
+					'success': True,
+					'result': result,
+					'message': 'OTP system test completed'
+				})
+				
+			except Exception as e:
+				print(f"✗ Exception in test: {str(e)}")
+				import traceback
+				traceback.print_exc()
+				return JsonResponse({'error': str(e)})
+	
+	return render(request, 'test_otp.html')
+
+def check_database(request):
+	"""Simple view to check database models"""
+	if request.method == 'POST':
+		try:
+			from .models import User, PasswordResetOTP
+			
+			# Check User model
+			user_count = User.objects.count()
+			
+			# Check PasswordResetOTP model
+			try:
+				otp_count = PasswordResetOTP.objects.count()
+				otp_status = f"✓ PasswordResetOTP model exists, {otp_count} records"
+			except Exception as e:
+				otp_status = f"✗ PasswordResetOTP model error: {e}"
+			
+			# Check if we can create a test OTP
+			try:
+				test_otp = PasswordResetOTP.objects.create(
+					email="test@example.com", 
+					otp="123456"
+				)
+				test_otp.delete()  # Clean up
+				otp_create_status = "✓ Can create and delete OTP records"
+			except Exception as e:
+				otp_create_status = f"✗ Cannot create OTP records: {e}"
+			
+			return JsonResponse({
+				'success': True,
+				'user_count': user_count,
+				'otp_status': otp_status,
+				'otp_create_status': otp_create_status
+			})
+			
+		except Exception as e:
+			return JsonResponse({
+				'success': False,
+				'error': str(e)
+			})
+	
+	return render(request, 'check_db.html')
+
+def check_migration(request):
+	"""Check if PasswordResetOTP model exists in database"""
+	try:
+		from django.db import connection
+		from django.db.utils import OperationalError
+		
+		# Check if the table exists
+		with connection.cursor() as cursor:
+			cursor.execute("""
+				SELECT COUNT(*) 
+				FROM information_schema.tables 
+				WHERE table_schema = DATABASE() 
+				AND table_name = 'core_passwordresetotp'
+			""")
+			table_exists = cursor.fetchone()[0] > 0
+		
+		if table_exists:
+			# Try to import and use the model
+			try:
+				from .models import PasswordResetOTP
+				count = PasswordResetOTP.objects.count()
+				return JsonResponse({
+					'success': True,
+					'message': 'PasswordResetOTP model exists and is working',
+					'table_exists': True,
+					'record_count': count
+				})
+			except Exception as e:
+				return JsonResponse({
+					'success': False,
+					'message': 'Table exists but model has errors',
+					'table_exists': True,
+					'error': str(e)
+				})
+		else:
+			return JsonResponse({
+				'success': False,
+				'message': 'PasswordResetOTP table does not exist. Run migrations first.',
+				'table_exists': False
+			})
+			
+	except Exception as e:
+		return JsonResponse({
+			'success': False,
+			'message': f'Error checking database: {str(e)}'
+		})
+
+@login_required
+def search_exams(request):
+    user = request.user
+    if user.role != 'Faculty':
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    
+    query = request.GET.get('q', '').strip()
+    min_score = request.GET.get('min_score')
+    max_score = request.GET.get('max_score')
+    
+    exams = Exam.objects.filter(created_by=user).order_by('-date')
+    
+    # Filter by title if query exists
+    if query:
+        exams = exams.filter(title__icontains=query)
+    
+    # Add submission statistics for each exam
+    results = []
+    for exam in exams:
+        submissions = Submission.objects.filter(exam=exam)
+        avg_score = submissions.aggregate(avg=models.Avg('score'))['avg'] or 0
+        
+        # Filter by score range if provided
+        if min_score and float(min_score) > avg_score:
+            continue
+        if max_score and float(max_score) < avg_score:
+            continue
+            
+        results.append({
+            'id': exam.id,
+            'title': exam.title,
+            'date': exam.date.strftime('%B %d, %Y at %H:%M'),
+            'total_submissions': submissions.count(),
+            'average_score': round(avg_score, 1),
+            'highest_score': submissions.aggregate(max=models.Max('score'))['max'] or 0,
+            'lowest_score': submissions.aggregate(min=models.Min('score'))['min'] or 0,
+        })
+    
+    return JsonResponse({'exams': results})
