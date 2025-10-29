@@ -22,6 +22,8 @@ class DistractionDetector:
         self.is_exam_frozen = False
         self.freeze_start_time = None
         self.freeze_duration = 300  # 5 minutes in seconds
+        self.last_warning_time = None
+        self.warning_cooldown = 5  # 5 seconds between warnings
         
         # Constants for face detection
         self.LEFT_IRIS = [474, 475, 476, 477]
@@ -39,13 +41,32 @@ class DistractionDetector:
 
     def detect_distraction(self, frame):
         """Process a frame and detect distractions"""
+        current_time = datetime.now()
+        
+        # Initialize response with proper time remaining
+        response = {
+            'face_detected': False,
+            'warning_message': '',
+            'warning_count': self.warning_count,
+            'is_frozen': self.is_exam_frozen,
+            'freeze_time_left': 0  # Initialize to 0
+        }
+
+        # Calculate freeze time remaining if exam is frozen
+        if self.is_exam_frozen and self.freeze_start_time:
+            elapsed_time = (current_time - self.freeze_start_time).total_seconds()
+            remaining_time = max(0, self.freeze_duration - elapsed_time)
+            response['freeze_time_left'] = int(remaining_time)
+            
+            # Auto-unfreeze if time is up
+            if remaining_time <= 0:
+                self.unfreeze_exam()
+                response['is_frozen'] = False
+                response['freeze_time_left'] = 0
+
         if frame is None:
-            return {
-                'face_detected': False,
-                'warning_message': 'No video feed available',
-                'warning_count': self.warning_count,
-                'is_frozen': self.is_exam_frozen
-            }
+            response['warning_message'] = 'No video feed available'
+            return response
 
         # Convert to RGB for MediaPipe
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -55,35 +76,16 @@ class DistractionDetector:
 
         # Process the frame
         results = self.face_mesh.process(rgb_frame)
-        
-        # Initialize response
-        response = {
-            'face_detected': False,
-            'warning_message': '',
-            'warning_count': self.warning_count,
-            'is_frozen': self.is_exam_frozen,
-            'freeze_time_left': None
-        }
-
-        # Update freeze status if active
-        if self.is_exam_frozen:
-            if self.freeze_start_time:
-                elapsed_time = (datetime.now() - self.freeze_start_time).total_seconds()
-                if elapsed_time >= self.freeze_duration:
-                    self.unfreeze_exam()
-                else:
-                    response['freeze_time_left'] = self.freeze_duration - elapsed_time
 
         # Check for face detection
         if not results.multi_face_landmarks:
-            # Update last face detection time
             if self.last_face_detected_time is None:
-                self.last_face_detected_time = datetime.now()
+                self.last_face_detected_time = current_time
             else:
-                time_without_face = (datetime.now() - self.last_face_detected_time).total_seconds()
+                time_without_face = (current_time - self.last_face_detected_time).total_seconds()
                 if time_without_face >= self.absence_threshold:
                     response['warning_message'] = 'Face not detected'
-                    self.issue_warning()
+                    self._handle_warning()
             return response
 
         # Face is detected
@@ -115,33 +117,42 @@ class DistractionDetector:
         # Detect distractions
         if left_eye_offset > self.GAZE_THRESHOLD or right_eye_offset > self.GAZE_THRESHOLD:
             response['warning_message'] = 'Looking away from screen'
-            self.issue_warning()
+            self._handle_warning()
         elif vertical_offset > self.GAZE_THRESHOLD:
             response['warning_message'] = 'Looking too high/low'
-            self.issue_warning()
+            self._handle_warning()
         elif head_offset > self.HEAD_MOVEMENT_THRESHOLD:
             response['warning_message'] = 'Head position too far from center'
-            self.issue_warning()
+            self._handle_warning()
 
         return response
 
-    def issue_warning(self):
-        """Issue a warning and check if exam should be frozen"""
-        if not self.is_exam_frozen:
+    def _handle_warning(self):
+        """Handle warning with cooldown period"""
+        current_time = datetime.now()
+        
+        # Check if enough time has passed since last warning
+        if (self.last_warning_time is None or 
+            (current_time - self.last_warning_time).total_seconds() >= self.warning_cooldown):
+            
             self.warning_count += 1
+            self.last_warning_time = current_time
+            
             if self.warning_count >= self.warning_limit:
                 self.freeze_exam()
 
     def freeze_exam(self):
         """Freeze the exam"""
-        self.is_exam_frozen = True
-        self.freeze_start_time = datetime.now()
+        if not self.is_exam_frozen:
+            self.is_exam_frozen = True
+            self.freeze_start_time = datetime.now()
 
     def unfreeze_exam(self):
         """Unfreeze the exam and reset warnings"""
         self.is_exam_frozen = False
         self.freeze_start_time = None
         self.warning_count = 0
+        self.last_warning_time = None
 
 def main():
     """Run the enhanced distraction detection system."""

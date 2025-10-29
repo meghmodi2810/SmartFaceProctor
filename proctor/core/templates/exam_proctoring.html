@@ -117,7 +117,7 @@ let examFrozen = false;
 const maxWarnings = {{ exam.warning_limit }};
 const absenceThreshold = {{ exam.absence_threshold }};
 const FREEZE_DURATION = 300; // 5 minutes in seconds
-let freezeTimeLeft = FREEZE_DURATION;
+let freezeTimeLeft = 0;
 let freezeTimer = null;
 
 async function initializeCamera() {
@@ -171,16 +171,24 @@ function startProctoring() {
 }
 
 function handleProctoringResponse(data) {
+    // Update warning counter
+    document.getElementById('warningCount').textContent = data.warning_count;
+    
+    // Handle freeze state
+    if (data.is_frozen) {
+        if (!examFrozen) {
+            freezeExam();
+        }
+        // Update freeze timer from backend
+        freezeTimeLeft = data.freeze_time_left;
+        updateFreezeTimerDisplay();
+    } else if (examFrozen) {
+        unfreezeExam();
+    }
+    
     if (data.warning_message) {
         showWarning(data.warning_message);
     }
-    
-    if (data.is_frozen && !examFrozen) {
-        freezeExam();
-    }
-    
-    // Update warning counter
-    document.getElementById('warningCount').textContent = data.warning_count;
 }
 
 function showWarning(message) {
@@ -201,12 +209,10 @@ function freezeExam() {
     examFrozen = true;
     document.getElementById('examContent').classList.add('frozen');
     document.getElementById('freezeOverlay').style.display = 'flex';
-    freezeTimeLeft = FREEZE_DURATION;
-    updateFreezeTimer();
-    freezeTimer = setInterval(updateFreezeTimer, 1000);
+    freezeTimer = setInterval(updateFreezeTimerDisplay, 1000);
 }
 
-function updateFreezeTimer() {
+function updateFreezeTimerDisplay() {
     if (freezeTimeLeft <= 0) {
         unfreezeExam();
         return;
@@ -216,14 +222,16 @@ function updateFreezeTimer() {
     const seconds = freezeTimeLeft % 60;
     document.getElementById('freezeTimer').textContent = 
         `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    freezeTimeLeft--;
 }
 
 function unfreezeExam() {
     examFrozen = false;
     document.getElementById('examContent').classList.remove('frozen');
     document.getElementById('freezeOverlay').style.display = 'none';
-    clearInterval(freezeTimer);
+    if (freezeTimer) {
+        clearInterval(freezeTimer);
+        freezeTimer = null;
+    }
     warningCount = 0;
     document.getElementById('warningCount').textContent = warningCount;
 }

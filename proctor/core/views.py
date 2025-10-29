@@ -518,19 +518,20 @@ def video_feed(request):
 
 @login_required
 def exam_proctoring_page(request):
-    detector = DistractionDetector()
     exam_id = request.session.get('current_exam_id')
     
     try:
         exam = Exam.objects.get(id=exam_id)
-        # Configure detector with exam settings
+        # Initialize a new detector for this exam session
+        detector = DistractionDetector()
         detector.set_warning_threshold(exam.warning_limit)
         detector.set_absence_threshold(exam.absence_threshold)
         
         return render(request, 'exam_proctoring.html', {
             'exam': exam,
             'warning_limit': exam.warning_limit,
-            'absence_threshold': exam.absence_threshold
+            'absence_threshold': exam.absence_threshold,
+            'freeze_duration': detector.freeze_duration
         })
         
     except Exam.DoesNotExist:
@@ -1687,15 +1688,20 @@ def process_frame(request):
         # Convert PIL image to OpenCV format
         opencv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
         
-        # Process frame using DistractionDetector
-        detector = DistractionDetector()
-        if exam_id:
-            try:
-                exam = Exam.objects.get(id=exam_id)
-                detector.set_warning_threshold(exam.warning_limit)
-                detector.set_absence_threshold(exam.absence_threshold)
-            except Exam.DoesNotExist:
-                pass
+        # Get or create detector instance for this exam session
+        detector_key = f'detector_{request.user.id}_{exam_id}'
+        if not hasattr(request, detector_key):
+            detector = DistractionDetector()
+            if exam_id:
+                try:
+                    exam = Exam.objects.get(id=exam_id)
+                    detector.set_warning_threshold(int(exam.warning_limit))
+                    detector.set_absence_threshold(exam.absence_threshold)
+                except Exam.DoesNotExist:
+                    pass
+            setattr(request, detector_key, detector)
+        else:
+            detector = getattr(request, detector_key)
 
         result = detector.detect_distraction(opencv_image)
         
@@ -1703,14 +1709,11 @@ def process_frame(request):
         response_data = {
             'success': True,
             'face_detected': result['face_detected'],
-            'warning_message': result['warning_message'] if result['warning_message'] else None,
+            'warning_message': result['warning_message'],
             'warning_count': result['warning_count'],
-            'is_frozen': result['is_frozen']
+            'is_frozen': result['is_frozen'],
+            'freeze_time_left': result['freeze_time_left'] if result['is_frozen'] else 0
         }
-        
-        # Add freeze time if exam is frozen
-        if result['is_frozen'] and result.get('freeze_time_left') is not None:
-            response_data['freeze_time_left'] = result['freeze_time_left']
         
         # Record violation if there's a warning
         if exam_id and result['warning_message'] and request.user.is_authenticated:

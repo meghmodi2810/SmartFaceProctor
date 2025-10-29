@@ -69,7 +69,7 @@ class ExamMonitor:
                 # Process frame and get results
                 result = self.detector.detect_distraction(frame)
                 
-                # Record violation if warning message exists
+                # Record violation if warning message exists and increment warning count
                 if result['warning_message']:
                     violation_type = 'Face Missing' if result['warning_message'] == 'Face not detected' else 'Distraction'
                     Violation.objects.create(
@@ -77,6 +77,10 @@ class ExamMonitor:
                         student_id=self.student_id,
                         type=violation_type
                     )
+                    
+                    # Check if we need to freeze the exam
+                    if result['warning_count'] >= exam.warning_limit and not result['is_frozen']:
+                        self.detector.freeze_exam()
 
         except Exception as e:
             print(f"Monitoring error: {e}")
