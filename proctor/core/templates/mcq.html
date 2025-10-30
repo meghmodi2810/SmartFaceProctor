@@ -576,13 +576,9 @@
         <div id="cameraStatus" style="margin-bottom: 1.5rem;">
             <div class="status-indicator warning" id="setupStatusIndicator">
                 <i class="fas fa-circle-exclamation"></i>
-                <span id="statusMessage">Click 'Initialize Camera' to start</span>
+                <span id="statusMessage">Initializing camera...</span>
             </div>
         </div>
-        
-        <button id="startCameraBtn" class="submit-btn">
-            <i class="fas fa-camera"></i> Initialize Camera
-        </button>
     </div>
 </div>
 
@@ -691,7 +687,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const setupVideo = document.getElementById('setupVideo');
     const examVideo = document.getElementById('examVideo');
     const examContent = document.getElementById('examContent');
-    const startCameraBtn = document.getElementById('startCameraBtn');
     const statusMessage = document.getElementById('statusMessage');
     const examStatusText = document.getElementById('examStatusText');
     const statusIndicator = document.getElementById('statusIndicator');
@@ -795,13 +790,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         // If face detected 3 times, enable start button
                         if (faceDetectedCount >= 3) {
                             clearInterval(faceDetectionSetupInterval);
+                            faceDetectionOverlay.style.display = 'none';
                             const setupStatusIndicator = document.getElementById('setupStatusIndicator');
                             setupStatusIndicator.classList.remove('warning', 'success');
                             setupStatusIndicator.classList.add('success');
-                            statusMessage.innerHTML = '<i class="fas fa-check-circle"></i> Face verified! Ready to start';
-                            startCameraBtn.innerHTML = '<i class="fas fa-play"></i> Start Exam';
-                            startCameraBtn.onclick = startExam;
-                            startCameraBtn.disabled = false;
+                            statusMessage.innerHTML = '<i class="fas fa-check-circle"></i> Face verified! Starting exam...';
+                            // Auto-start exam after face verification
+                            setTimeout(startExam, 1000);
                         }
                     } else {
                         faceDetectedCount = 0;
@@ -1017,8 +1012,25 @@ document.addEventListener('DOMContentLoaded', function() {
         return answered === total;
     }
 
-    // Initialize camera on button click
-    startCameraBtn.onclick = initializeCamera;
+    // Cleanup function to stop camera
+    function cleanupCamera() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+        if (distractionCheckInterval) {
+            clearInterval(distractionCheckInterval);
+            distractionCheckInterval = null;
+        }
+        if (faceDetectionSetupInterval) {
+            clearInterval(faceDetectionSetupInterval);
+            faceDetectionSetupInterval = null;
+        }
+    }
+    
+    // Auto-initialize camera on page load
+    cleanupCamera(); // Clean up any existing camera first
+    initializeCamera();
 
     // Prevent back button navigation
     history.pushState(null, null, location.href);

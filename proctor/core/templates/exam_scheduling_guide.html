@@ -1,0 +1,443 @@
+{% extends 'faculty_base.html' %}
+
+{% block title %}Exam Scheduling Guide - Proctoring System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .guide-container {
+        max-width: 1000px;
+        margin: 2rem auto;
+        padding: 2rem;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        box-shadow: 0 8px 32px rgba(44, 62, 80, 0.15);
+    }
+    
+    .guide-header {
+        text-align: center;
+        margin-bottom: 3rem;
+        padding-bottom: 2rem;
+        border-bottom: 3px solid #e0e7ff;
+    }
+    
+    .guide-header h1 {
+        font-size: 2.5rem;
+        background: linear-gradient(135deg, #2d3e50 0%, #4f8cff 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem;
+    }
+    
+    .guide-header p {
+        font-size: 1.2rem;
+        color: #6b7280;
+    }
+    
+    .download-section {
+        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
+        padding: 2rem;
+        border-radius: 15px;
+        text-align: center;
+        margin-bottom: 3rem;
+        color: white;
+    }
+    
+    .download-section h2 {
+        font-size: 1.8rem;
+        margin-bottom: 1rem;
+    }
+    
+    .download-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: white;
+        color: #4f8cff;
+        padding: 1rem 2rem;
+        border-radius: 50px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        margin-top: 1rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .download-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
+        color: #2d3e50;
+    }
+    
+    .download-btn i {
+        font-size: 1.5rem;
+    }
+    
+    .steps-section {
+        margin-top: 2rem;
+    }
+    
+    .step {
+        background: #f8fafc;
+        border-left: 5px solid #4f8cff;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+    }
+    
+    .step:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 15px rgba(79, 140, 255, 0.15);
+    }
+    
+    .step-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
+        color: white;
+        border-radius: 50%;
+        font-weight: 700;
+        font-size: 1.3rem;
+        margin-right: 1rem;
+    }
+    
+    .step-title {
+        display: flex;
+        align-items: center;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2d3e50;
+        margin-bottom: 1rem;
+    }
+    
+    .step-content {
+        margin-left: 3.5rem;
+        color: #4b5563;
+        line-height: 1.8;
+        font-size: 1.05rem;
+    }
+    
+    .code-block {
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
+        margin: 1rem 0;
+        overflow-x: auto;
+        font-size: 0.95rem;
+    }
+    
+    .email-highlight {
+        background: #fef3c7;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-weight: 600;
+        color: #92400e;
+        display: inline-block;
+        margin: 0.5rem 0;
+        font-family: 'Courier New', monospace;
+    }
+    
+    .warning-box {
+        background: #fef2f2;
+        border-left: 5px solid #ef4444;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin: 2rem 0;
+    }
+    
+    .warning-box h3 {
+        color: #dc2626;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .warning-box p {
+        color: #7f1d1d;
+        margin: 0;
+        line-height: 1.6;
+    }
+    
+    .success-box {
+        background: #f0fdf4;
+        border-left: 5px solid #10b981;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin: 2rem 0;
+    }
+    
+    .success-box h3 {
+        color: #059669;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .success-box p {
+        color: #065f46;
+        margin: 0;
+        line-height: 1.6;
+    }
+    
+    .template-preview {
+        background: white;
+        border: 2px solid #e0e7ff;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+    }
+    
+    .template-preview h4 {
+        color: #2d3e50;
+        margin-bottom: 1rem;
+        font-size: 1.2rem;
+    }
+    
+    .template-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+    
+    .template-table th {
+        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
+        color: white;
+        padding: 0.75rem;
+        text-align: left;
+        font-weight: 600;
+    }
+    
+    .template-table td {
+        padding: 0.75rem;
+        border: 1px solid #e0e7ff;
+    }
+    
+    .template-table tr:nth-child(even) {
+        background: #f8fafc;
+    }
+    
+    .back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+        color: #4f8cff;
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        margin-top: 2rem;
+    }
+    
+    .back-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(79, 140, 255, 0.3);
+    }
+    
+    @media (max-width: 768px) {
+        .guide-container {
+            padding: 1rem;
+        }
+        
+        .guide-header h1 {
+            font-size: 2rem;
+        }
+        
+        .step-content {
+            margin-left: 0;
+        }
+        
+        .step-title {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .step-number {
+            margin-bottom: 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="guide-container">
+    <div class="guide-header">
+        <h1>📚 Exam Scheduling Guide</h1>
+        <p>Learn how to schedule exams using Google Sheets</p>
+    </div>
+    
+    <div class="download-section">
+        <h2>📥 Download Question Template</h2>
+        <p>Start by downloading our pre-formatted template</p>
+        <a href="{% url 'download_template' %}" class="download-btn">
+            <i class="fas fa-download"></i>
+            Download QuestionsProctor.xlsx
+        </a>
+    </div>
+    
+    <div class="steps-section">
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">1</span>
+                Upload Template to Google Drive
+            </div>
+            <div class="step-content">
+                <p>After downloading the template:</p>
+                <ul>
+                    <li>Go to <strong>Google Drive</strong></li>
+                    <li>Click <strong>"New"</strong> → <strong>"File upload"</strong></li>
+                    <li>Select the downloaded <code>QuestionsProctor.xlsx</code> file</li>
+                    <li>Once uploaded, <strong>right-click</strong> the file and select <strong>"Open with Google Sheets"</strong></li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">2</span>
+                Fill in Your Questions
+            </div>
+            <div class="step-content">
+                <p>The template has the following structure:</p>
+                <div class="template-preview">
+                    <h4>Template Format</h4>
+                    <table class="template-table">
+                        <thead>
+                            <tr>
+                                <th>question</th>
+                                <th>option1</th>
+                                <th>option2</th>
+                                <th>option3</th>
+                                <th>option4</th>
+                                <th>answer</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>What is 2+2?</td>
+                                <td>3</td>
+                                <td>4</td>
+                                <td>5</td>
+                                <td>6</td>
+                                <td>4</td>
+                            </tr>
+                            <tr>
+                                <td>Capital of France?</td>
+                                <td>London</td>
+                                <td>Paris</td>
+                                <td>Berlin</td>
+                                <td>Madrid</td>
+                                <td>Paris</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="warning-box">
+                    <h3><i class="fas fa-exclamation-triangle"></i> Important Rules</h3>
+                    <p>
+                        • <strong>Do NOT</strong> change column headers<br>
+                        • The <strong>answer</strong> column must match <strong>exactly</strong> with one of the options<br>
+                        • All fields are <strong>required</strong> - no empty cells<br>
+                        • Use simple text only - no formulas or special characters
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">3</span>
+                Share Sheet with Proctor System
+            </div>
+            <div class="step-content">
+                <p><strong>This is the MOST IMPORTANT step!</strong></p>
+                <ol>
+                    <li>Click the <strong>"Share"</strong> button in the top-right corner of Google Sheets</li>
+                    <li>In the "Add people and groups" field, paste this email:</li>
+                </ol>
+                <div class="email-highlight">
+                    proctor-api@proctorsystemapi.iam.gserviceaccount.com
+                </div>
+                <ol start="3">
+                    <li>Set the role to <strong>"Editor"</strong></li>
+                    <li>Click <strong>"Send"</strong></li>
+                </ol>
+                <div class="success-box">
+                    <h3><i class="fas fa-check-circle"></i> Why This is Needed</h3>
+                    <p>
+                        The Proctor System needs <strong>Editor</strong> access to read your questions from Google Sheets.
+                        This is a secure service account that only accesses sheets you explicitly share.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">4</span>
+                Copy the Google Sheet Link
+            </div>
+            <div class="step-content">
+                <p>After sharing the sheet:</p>
+                <ol>
+                    <li>Click the <strong>"Share"</strong> button again</li>
+                    <li>Click <strong>"Copy link"</strong></li>
+                    <li>OR simply copy the URL from your browser's address bar</li>
+                </ol>
+                <p>The link will look like this:</p>
+                <div class="code-block">
+https://docs.google.com/spreadsheets/d/1abc...xyz/edit
+                </div>
+            </div>
+        </div>
+        
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">5</span>
+                Schedule Your Exam
+            </div>
+            <div class="step-content">
+                <p>Go back to the <strong>Schedule Exam</strong> page and:</p>
+                <ol>
+                    <li>Fill in all exam details (title, date, time, duration, etc.)</li>
+                    <li>Paste the Google Sheets link in the <strong>"Google Sheets Link"</strong> field</li>
+                    <li>Click <strong>"Schedule Exam"</strong></li>
+                </ol>
+                <div class="success-box">
+                    <h3><i class="fas fa-check-circle"></i> Done!</h3>
+                    <p>
+                        Your exam is now scheduled! The system will automatically fetch questions from your Google Sheet
+                        when students start the exam.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="warning-box">
+        <h3><i class="fas fa-info-circle"></i> Troubleshooting</h3>
+        <p>
+            <strong>If the exam doesn't load questions:</strong><br>
+            • Check that you shared the sheet with the correct email<br>
+            • Ensure the email has <strong>Editor</strong> permissions (not Viewer)<br>
+            • Verify all column headers match exactly: question, option1, option2, option3, option4, answer<br>
+            • Make sure the answer matches one of the options exactly (case-sensitive)
+        </p>
+    </div>
+    
+    <a href="{% url 'schedule_exam' %}" class="back-btn">
+        <i class="fas fa-arrow-left"></i>
+        Back to Schedule Exam
+    </a>
+</div>
+{% endblock %}

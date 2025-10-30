@@ -26,6 +26,8 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
     }
     
     .schedule-header-card h3 {
@@ -37,6 +39,36 @@
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
+    }
+    
+    .header-buttons {
+        display: flex;
+        gap: 1rem;
+    }
+    
+    .help-btn {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: none;
+        padding: 0.875rem 1.5rem;
+        border-radius: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1rem;
+    }
+    
+    .help-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+    }
+    
+    .help-btn i {
+        font-size: 1.2rem;
     }
     
     .back-btn {
@@ -289,7 +321,13 @@
     
     <div class="schedule-header-card">
         <h3>📅 Schedule New Exam</h3>
-        <a href="{% url 'faculty_dashboard' %}" class="back-btn">← Back</a>
+        <div class="header-buttons">
+            <a href="{% url 'exam_scheduling_guide' %}" class="help-btn">
+                <i class="fas fa-question-circle"></i>
+                How to Schedule?
+            </a>
+            <a href="{% url 'faculty_dashboard' %}" class="back-btn">← Back</a>
+        </div>
     </div>
     
     <div class="schedule-form-card">

@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.http import StreamingHttpResponse, JsonResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from .models import Exam, Submission, Violation, Department, User
+from .models import Exam, Submission, Violation, Department, User, ExamAttempt
 import cv2
 import numpy as np
 from django.utils import timezone
@@ -824,6 +824,34 @@ def schedule_exam_page(request):
     return render(request, 'faculty_schedule.html', context)
 
 @login_required
+def exam_scheduling_guide(request):
+    """Display guide on how to schedule exams using Google Sheets"""
+    if request.user.role != 'Faculty':
+        return redirect('student_dashboard')
+    return render(request, 'exam_scheduling_guide.html')
+
+@login_required
+def download_template(request):
+    """Download the QuestionsProctor.xlsx template"""
+    if request.user.role != 'Faculty':
+        return redirect('student_dashboard')
+    
+    import mimetypes
+    from django.http import FileResponse
+    
+    # Path to template file
+    template_path = os.path.join(os.path.dirname(__file__), 'excel_template', 'QuestionsProctor.xlsx')
+    
+    if not os.path.exists(template_path):
+        messages.error(request, 'Template file not found.')
+        return redirect('schedule_exam_page')
+    
+    # Open and return file
+    response = FileResponse(open(template_path, 'rb'), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="QuestionsProctor.xlsx"'
+    return response
+
+@login_required
 def faculty_profile(request):
     user = request.user
     if user.role != 'Faculty':
@@ -1104,17 +1132,26 @@ def student_exams(request):
     for exam in exams_iterable:
         exam_end_time = exam.date + timezone.timedelta(minutes=exam.duration_minutes)
         
+        # Check if student has a submission
+        submission = Submission.objects.filter(student=user, exam=exam).first()
+        
         if current_time < exam.date:
             status = 'upcoming'
         elif current_time >= exam.date and current_time <= exam_end_time:
-            status = 'ongoing'
+            # Exam time period is active
+            if submission:
+                # Student completed and submitted
+                status = 'completed'
+            else:
+                # Exam is ongoing regardless of attempt status
+                # (attempt blocking happens in exam view, not here)
+                status = 'ongoing'
         elif current_time > exam_end_time:
-            submission = Submission.objects.filter(student=user, exam=exam).first()
+            # Time has passed
             if submission:
                 status = 'completed'
             else:
                 status = 'expired'
-                # Removed email sending to avoid slowing down page rendering
         else:
             status = 'unknown'
         
@@ -2183,7 +2220,14 @@ def check_distraction(request):
             'warning_limit': 3,
             'absence_threshold': 10,
             'distraction_start_time': None,
-            'last_face_detected_time': None
+            'last_face_detected_time': None,
+            # NEW: Movement tracking state
+            'prev_nose_pos': None,
+            'prev_iris_pos': None,
+            'movement_history': [],
+            'calibration_frames': 0,
+            'baseline_nose_x': None,
+            'baseline_iris_x': None
         })
         
         # Create detector and restore state
@@ -2259,6 +2303,18 @@ def check_distraction(request):
             from datetime import datetime
             detector.last_warning_time = datetime.fromisoformat(detector_state['last_warning_time'])
         
+        # Restore movement tracking state
+        if detector_state.get('prev_nose_pos'):
+            detector.prev_nose_pos = tuple(detector_state['prev_nose_pos'])
+        if detector_state.get('prev_iris_pos'):
+            detector.prev_iris_pos = tuple(detector_state['prev_iris_pos'])
+        detector.movement_history = detector_state.get('movement_history', [])
+        
+        # Restore calibration data
+        detector.calibration_frames = detector_state.get('calibration_frames', 0)
+        detector.baseline_nose_x = detector_state.get('baseline_nose_x')
+        detector.baseline_iris_x = detector_state.get('baseline_iris_x')
+        
         # Process frame for distractions
         result = detector.detect_distraction(frame)
         
@@ -2271,7 +2327,15 @@ def check_distraction(request):
             'last_face_detected_time': detector.last_face_detected_time.isoformat() if detector.last_face_detected_time else None,
             'last_warning_time': detector.last_warning_time.isoformat() if detector.last_warning_time else None,
             'warning_limit': detector.warning_limit,
-            'absence_threshold': detector.absence_threshold
+            'absence_threshold': detector.absence_threshold,
+            # Save movement tracking state
+            'prev_nose_pos': list(detector.prev_nose_pos) if detector.prev_nose_pos else None,
+            'prev_iris_pos': list(detector.prev_iris_pos) if detector.prev_iris_pos else None,
+            'movement_history': detector.movement_history,
+            # Save calibration data
+            'calibration_frames': detector.calibration_frames,
+            'baseline_nose_x': detector.baseline_nose_x,
+            'baseline_iris_x': detector.baseline_iris_x
         }
         request.session.modified = True
         

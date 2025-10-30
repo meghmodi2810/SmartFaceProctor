@@ -17,8 +17,8 @@ class DistractionDetector:
         # Initialize state variables
         self.warning_count = 0
         self.warning_limit = 3  # Default warning limit
-        self.absence_threshold = 8  # Reduced to 8 seconds for faster detection
-        self.distraction_threshold = 12  # Reduced to 12 seconds for better monitoring
+        self.absence_threshold = 3  # VERY STRICT: 3 seconds
+        self.distraction_threshold = 4  # VERY STRICT: 4 seconds (was 8)
         
         # Tracking times
         self.last_face_detected_time = None
@@ -27,12 +27,18 @@ class DistractionDetector:
         self.calibration_frames = 0
         self.calibration_complete = False
         
+        # Movement tracking - NEW
+        self.prev_nose_pos = None
+        self.prev_iris_pos = None
+        self.movement_history = []  # Track last 5 frames of movement
+        self.MOVEMENT_HISTORY_SIZE = 5
+        
         # Freeze management
         self.is_exam_frozen = False
         self.freeze_start_time = None
         self.freeze_duration = 300  # 5 minutes
         self.last_warning_time = None
-        self.warning_cooldown = 8  # 8 seconds between warnings
+        self.warning_cooldown = 5  # STRICTER: 5 seconds between warnings
         
         # Face landmarks for detection
         self.LEFT_IRIS = [474, 475, 476, 477]
@@ -40,18 +46,20 @@ class DistractionDetector:
         self.NOSE_TIP = 1
         self.CHIN = 152
         
-        # Adaptive thresholds (will calibrate based on first frames)
-        self.GAZE_THRESHOLD = 70  # Base threshold in pixels
-        self.HEAD_MOVEMENT_THRESHOLD = 130  # Base threshold in pixels
-        self.VERTICAL_GAZE_THRESHOLD = 60  # For up/down detection
+        # VERY AGGRESSIVE thresholds - catches everything
+        self.GAZE_THRESHOLD = 35  # VERY AGGRESSIVE: 35 pixels (was 50)
+        self.HEAD_MOVEMENT_THRESHOLD = 70  # VERY AGGRESSIVE: 70 pixels (was 100)
+        self.VERTICAL_GAZE_THRESHOLD = 30  # VERY AGGRESSIVE: 30 pixels (was 45)
+        self.MOVEMENT_THRESHOLD = 25  # NEW: Detect frame-to-frame movement
+        self.EXCESSIVE_MOVEMENT_THRESHOLD = 40  # NEW: Major movement detection
         
         # Calibration data
         self.baseline_nose_x = None
         self.baseline_iris_x = None
         
-        # Multiple face detection
+        # Multiple face detection - STRICTER
         self.multiple_face_start_time = None
-        self.multiple_face_threshold = 5  # Seconds before warning
+        self.multiple_face_threshold = 3  # STRICTER: 3 seconds (was 5)
 
     def set_warning_threshold(self, limit):
         """Set the maximum number of warnings before freezing the exam"""
@@ -116,16 +124,21 @@ class DistractionDetector:
         else:
             self.multiple_face_start_time = None
 
-        # Check for face absence
+        # Check for face absence - IMMEDIATE FEEDBACK
         if not results.multi_face_landmarks:
             if self.last_face_detected_time is None:
                 self.last_face_detected_time = current_time
+                # Show warning immediately
+                response['warning_message'] = 'Face not detected'
             else:
                 time_without_face = (current_time - self.last_face_detected_time).total_seconds()
+                # Show continuous warning message
+                response['warning_message'] = f'⚠️ NO FACE DETECTED - {int(time_without_face)}s'
+                
+                # Issue warning after threshold
                 if time_without_face >= self.absence_threshold:
-                    response['warning_message'] = f'Face not detected for {int(time_without_face)}s'
                     self._handle_warning('Face Missing')
-                    self.last_face_detected_time = current_time
+                    # Don't reset timer - keep accumulating to show continuous absence
             return response
 
         # Single face detected
@@ -137,8 +150,8 @@ class DistractionDetector:
         mesh_coords = [(int(point.x * frame_width), int(point.y * frame_height))
                       for point in face_landmarks.landmark]
 
-        # Calibration phase (first 30 frames)
-        if self.calibration_frames < 30:
+        # Calibration phase (first 20 frames for faster detection)
+        if self.calibration_frames < 20:
             nose_x = mesh_coords[self.NOSE_TIP][0]
             left_iris = np.array([mesh_coords[idx] for idx in self.LEFT_IRIS])
             (l_cx, _), _ = cv2.minEnclosingCircle(left_iris)
@@ -152,8 +165,9 @@ class DistractionDetector:
                 self.baseline_iris_x = (self.baseline_iris_x + l_cx) / 2
             
             self.calibration_frames += 1
-            if self.calibration_frames == 30:
+            if self.calibration_frames == 20:
                 self.calibration_complete = True
+                response['warning_message'] = 'Calibration complete - monitoring active'
             return response
 
         # Extract iris positions
@@ -175,41 +189,85 @@ class DistractionDetector:
 
         # Head position
         nose_x = mesh_coords[self.NOSE_TIP][0]
+        nose_y = mesh_coords[self.NOSE_TIP][1]
         head_offset = abs(nose_x - reference_x)
 
-        # Detect distractions with improved logic
+        # MOVEMENT DETECTION - Track frame-to-frame changes
+        movement_detected = False
+        movement_magnitude = 0
+        
+        if self.prev_nose_pos is not None and self.prev_iris_pos is not None:
+            # Calculate movement from previous frame
+            nose_movement = np.sqrt((nose_x - self.prev_nose_pos[0])**2 + 
+                                   (nose_y - self.prev_nose_pos[1])**2)
+            iris_movement = np.sqrt((avg_iris_x - self.prev_iris_pos[0])**2 + 
+                                   (avg_iris_y - self.prev_iris_pos[1])**2)
+            
+            movement_magnitude = max(nose_movement, iris_movement)
+            
+            # Add to movement history
+            self.movement_history.append(movement_magnitude)
+            if len(self.movement_history) > self.MOVEMENT_HISTORY_SIZE:
+                self.movement_history.pop(0)
+            
+            # Check for excessive movement
+            avg_movement = sum(self.movement_history) / len(self.movement_history) if self.movement_history else 0
+            
+            if movement_magnitude > self.EXCESSIVE_MOVEMENT_THRESHOLD:
+                movement_detected = True
+            elif avg_movement > self.MOVEMENT_THRESHOLD:
+                movement_detected = True
+        
+        # Update previous positions
+        self.prev_nose_pos = (nose_x, nose_y)
+        self.prev_iris_pos = (avg_iris_x, avg_iris_y)
+
+        # Detect distractions with AGGRESSIVE logic
         is_distracted = False
         distraction_reason = ''
         
-        # Horizontal gaze detection (looking left/right)
-        if horizontal_gaze_offset > self.GAZE_THRESHOLD:
+        # Priority 1: Excessive movement (most suspicious)
+        if movement_detected and movement_magnitude > self.EXCESSIVE_MOVEMENT_THRESHOLD:
+            is_distracted = True
+            distraction_reason = '🚨 EXCESSIVE MOVEMENT DETECTED'
+        
+        # Priority 2: Horizontal gaze detection (looking left/right)
+        elif horizontal_gaze_offset > self.GAZE_THRESHOLD:
             is_distracted = True
             direction = 'left' if avg_iris_x < reference_x else 'right'
-            distraction_reason = f'Looking {direction}'
+            distraction_reason = f'⚠️ LOOKING {direction.upper()}'
         
-        # Vertical gaze detection (looking up/down)
+        # Priority 3: Vertical gaze detection (looking up/down)
         elif vertical_gaze_offset > self.VERTICAL_GAZE_THRESHOLD:
             is_distracted = True
             direction = 'down' if avg_iris_y > frame_center_y else 'up'
-            distraction_reason = f'Looking {direction}'
+            distraction_reason = f'⚠️ LOOKING {direction.upper()}'
         
-        # Head movement detection
+        # Priority 4: Head movement detection
         elif head_offset > self.HEAD_MOVEMENT_THRESHOLD:
             is_distracted = True
-            distraction_reason = 'Head turned away'
+            distraction_reason = '⚠️ HEAD TURNED AWAY'
+        
+        # Priority 5: Sustained movement (fidgeting/looking around)
+        elif movement_detected:
+            is_distracted = True
+            distraction_reason = '⚠️ SUSPICIOUS MOVEMENT'
         
         # Handle distraction accumulation
         if is_distracted:
             if self.distraction_start_time is None:
                 self.distraction_start_time = current_time
+                # Show immediate feedback
+                response['warning_message'] = distraction_reason
             else:
                 distraction_duration = (current_time - self.distraction_start_time).total_seconds()
                 if distraction_duration >= self.distraction_threshold:
-                    response['warning_message'] = f'{distraction_reason} for {int(distraction_duration)}s'
+                    response['warning_message'] = f'🛑 {distraction_reason} - WARNING ISSUED ({int(distraction_duration)}s)'
                     self._handle_warning('Looking Away')
                     self.distraction_start_time = current_time
                 else:
-                    response['warning_message'] = f'{distraction_reason} ({int(distraction_duration)}s)'
+                    # Show escalating urgency
+                    response['warning_message'] = f'{distraction_reason} - {int(distraction_duration)}s'
         else:
             # Student is focused
             self.distraction_start_time = None

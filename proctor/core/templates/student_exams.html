@@ -284,8 +284,8 @@
     </div>
     
     <div class="exam-filters">
-        <button class="filter-btn active" data-filter="all">All Exams</button>
-        <button class="filter-btn" data-filter="upcoming">Upcoming</button>
+        <button class="filter-btn" data-filter="all">All Exams</button>
+        <button class="filter-btn active" data-filter="upcoming">Upcoming</button>
         <button class="filter-btn" data-filter="ongoing">Ongoing</button>
         <button class="filter-btn" data-filter="completed">Completed</button>
         <button class="filter-btn" data-filter="expired">Expired</button>
@@ -337,12 +337,19 @@
             </div>
         </div>
         {% empty %}
-        <div class="no-exams">
+        <div class="no-exams" id="noExamsMessage">
             <i>📚</i>
             <h3>No Exams Found</h3>
             <p>You don't have any exams scheduled at the moment.</p>
         </div>
         {% endfor %}
+        
+        <!-- Dynamic no exams message for filters -->
+        <div class="no-exams" id="noExamsFiltered" style="display: none;">
+            <i id="noExamsIcon">📚</i>
+            <h3 id="noExamsTitle">No Exams Found</h3>
+            <p id="noExamsText">You don't have any exams in this category.</p>
+        </div>
     </div>
 </div>
 
@@ -350,6 +357,66 @@
 document.addEventListener('DOMContentLoaded', function() {
     const filterBtns = document.querySelectorAll('.filter-btn');
     const examCards = document.querySelectorAll('.exam-card');
+    
+    const noExamsFiltered = document.getElementById('noExamsFiltered');
+    const noExamsIcon = document.getElementById('noExamsIcon');
+    const noExamsTitle = document.getElementById('noExamsTitle');
+    const noExamsText = document.getElementById('noExamsText');
+    
+    // Function to apply filter
+    function applyFilter(filter) {
+        let visibleCount = 0;
+        
+        examCards.forEach(card => {
+            const status = card.getAttribute('data-status');
+            
+            if (filter === 'all' || status === filter) {
+                card.style.display = 'block';
+                card.style.animation = 'fadeIn 0.5s ease';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        
+        // Show/hide no exams message based on count
+        if (visibleCount === 0 && examCards.length > 0) {
+            noExamsFiltered.style.display = 'block';
+            
+            // Update message based on filter
+            switch(filter) {
+                case 'upcoming':
+                    noExamsIcon.textContent = '📅';
+                    noExamsTitle.textContent = 'No Upcoming Exams';
+                    noExamsText.textContent = 'You don\'t have any upcoming exams scheduled.';
+                    break;
+                case 'ongoing':
+                    noExamsIcon.textContent = '⏰';
+                    noExamsTitle.textContent = 'No Ongoing Exams';
+                    noExamsText.textContent = 'You don\'t have any exams currently in progress.';
+                    break;
+                case 'completed':
+                    noExamsIcon.textContent = '✅';
+                    noExamsTitle.textContent = 'No Completed Exams';
+                    noExamsText.textContent = 'You haven\'t completed any exams yet.';
+                    break;
+                case 'expired':
+                    noExamsIcon.textContent = '⏳';
+                    noExamsTitle.textContent = 'No Expired Exams';
+                    noExamsText.textContent = 'You haven\'t missed any exams. Great job!';
+                    break;
+                default:
+                    noExamsIcon.textContent = '📚';
+                    noExamsTitle.textContent = 'No Exams Found';
+                    noExamsText.textContent = 'You don\'t have any exams in this category.';
+            }
+        } else {
+            noExamsFiltered.style.display = 'none';
+        }
+    }
+    
+    // Apply default 'upcoming' filter on page load
+    applyFilter('upcoming');
     
     filterBtns.forEach(btn => {
         btn.addEventListener('click', function() {
@@ -359,17 +426,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.classList.add('active');
             
             const filter = this.getAttribute('data-filter');
-            
-            examCards.forEach(card => {
-                const status = card.getAttribute('data-status');
-                
-                if (filter === 'all' || status === filter) {
-                    card.style.display = 'block';
-                    card.style.animation = 'fadeIn 0.5s ease';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
+            applyFilter(filter);
         });
     });
 });
