@@ -56,17 +56,52 @@
     
     .form-control {
         width: 100%;
-        padding: 0.75rem;
-        border: 2px solid #e0e7ff;
-        border-radius: 8px;
-        font-size: 1rem;
+        padding: 0.75rem 1.25rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 0.95rem;
+        background: #ffffff;
+        color: #1e293b;
         transition: all 0.3s ease;
+    }
+    
+    .form-control:hover {
+        border-color: #cbd5e1;
+        background: #f8fafc;
     }
     
     .form-control:focus {
         outline: none;
         border-color: #4f8cff;
-        box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.1);
+        box-shadow: 0 0 0 4px rgba(79, 140, 255, 0.15);
+        background: #ffffff;
+    }
+    
+    .form-control::placeholder {
+        color: #94a3b8;
+    }
+    
+    .form-control:disabled,
+    .form-control:read-only {
+        background: #f1f5f9;
+        border-color: #e2e8f0;
+        color: #64748b;
+        cursor: not-allowed;
+    }
+    
+    textarea.form-control {
+        resize: vertical;
+        min-height: 80px;
+    }
+    
+    select.form-control {
+        cursor: pointer;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+        background-position: right 0.75rem center;
+        background-repeat: no-repeat;
+        background-size: 1.5em 1.5em;
+        padding-right: 2.5rem;
+        appearance: none;
     }
     
     .required-field::after {

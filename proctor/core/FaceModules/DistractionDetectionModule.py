@@ -5,38 +5,53 @@ from datetime import datetime, timedelta
 
 class DistractionDetector:
     def __init__(self):
-        # Initialize MediaPipe Face Mesh
+        # Initialize MediaPipe Face Mesh with optimized settings
         self.mp_face_mesh = mp.solutions.face_mesh
         self.face_mesh = self.mp_face_mesh.FaceMesh(
-            max_num_faces=1,
+            max_num_faces=2,  # Detect up to 2 faces for multiple person detection
             refine_landmarks=True,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5
+            min_detection_confidence=0.6,  # Increased for better accuracy
+            min_tracking_confidence=0.6
         )
         
         # Initialize state variables
         self.warning_count = 0
         self.warning_limit = 3  # Default warning limit
-        self.absence_threshold = 10  # Default absence threshold in seconds
-        self.distraction_threshold = 15  # Seconds of continuous distraction before warning (increased from 10)
+        self.absence_threshold = 8  # Reduced to 8 seconds for faster detection
+        self.distraction_threshold = 12  # Reduced to 12 seconds for better monitoring
         
         # Tracking times
         self.last_face_detected_time = None
-        self.distraction_start_time = None  # Track when distraction started
-        self.last_focused_time = None  # Track when student was last focused
+        self.distraction_start_time = None
+        self.last_focused_time = None
+        self.calibration_frames = 0
+        self.calibration_complete = False
         
         # Freeze management
         self.is_exam_frozen = False
         self.freeze_start_time = None
-        self.freeze_duration = 300  # 5 minutes in seconds
+        self.freeze_duration = 300  # 5 minutes
         self.last_warning_time = None
-        self.warning_cooldown = 10  # 10 seconds between warnings (increased from 5)
+        self.warning_cooldown = 8  # 8 seconds between warnings
         
-        # Constants for face detection - MADE LESS SENSITIVE
+        # Face landmarks for detection
         self.LEFT_IRIS = [474, 475, 476, 477]
         self.RIGHT_IRIS = [469, 470, 471, 472]
-        self.GAZE_THRESHOLD = 80  # pixels (increased from 50 - less sensitive)
-        self.HEAD_MOVEMENT_THRESHOLD = 150  # pixels (increased from 100 - less sensitive)
+        self.NOSE_TIP = 1
+        self.CHIN = 152
+        
+        # Adaptive thresholds (will calibrate based on first frames)
+        self.GAZE_THRESHOLD = 70  # Base threshold in pixels
+        self.HEAD_MOVEMENT_THRESHOLD = 130  # Base threshold in pixels
+        self.VERTICAL_GAZE_THRESHOLD = 60  # For up/down detection
+        
+        # Calibration data
+        self.baseline_nose_x = None
+        self.baseline_iris_x = None
+        
+        # Multiple face detection
+        self.multiple_face_start_time = None
+        self.multiple_face_threshold = 5  # Seconds before warning
 
     def set_warning_threshold(self, limit):
         """Set the maximum number of warnings before freezing the exam"""
@@ -47,25 +62,25 @@ class DistractionDetector:
         self.absence_threshold = seconds
 
     def detect_distraction(self, frame):
-        """Process a frame and detect distractions"""
+        """Process a frame and detect distractions with improved accuracy"""
         current_time = datetime.now()
         
-        # Initialize response with proper time remaining
+        # Initialize response
         response = {
             'face_detected': False,
             'warning_message': '',
             'warning_count': self.warning_count,
             'is_frozen': self.is_exam_frozen,
-            'freeze_time_left': 0  # Initialize to 0
+            'freeze_time_left': 0,
+            'multiple_faces': False
         }
 
-        # Calculate freeze time remaining if exam is frozen
+        # Handle frozen exam
         if self.is_exam_frozen and self.freeze_start_time:
             elapsed_time = (current_time - self.freeze_start_time).total_seconds()
             remaining_time = max(0, self.freeze_duration - elapsed_time)
             response['freeze_time_left'] = int(remaining_time)
             
-            # Auto-unfreeze if time is up
             if remaining_time <= 0:
                 self.unfreeze_exam()
                 response['is_frozen'] = False
@@ -84,7 +99,24 @@ class DistractionDetector:
         # Process the frame
         results = self.face_mesh.process(rgb_frame)
 
-        # Check for face detection
+        # Check for multiple faces
+        if results.multi_face_landmarks and len(results.multi_face_landmarks) > 1:
+            response['multiple_faces'] = True
+            if self.multiple_face_start_time is None:
+                self.multiple_face_start_time = current_time
+            else:
+                duration = (current_time - self.multiple_face_start_time).total_seconds()
+                if duration >= self.multiple_face_threshold:
+                    response['warning_message'] = f'Multiple faces detected for {int(duration)}s'
+                    self._handle_warning('Multiple Faces')
+                    self.multiple_face_start_time = current_time
+                else:
+                    response['warning_message'] = f'Multiple faces detected ({int(duration)}s)'
+            return response
+        else:
+            self.multiple_face_start_time = None
+
+        # Check for face absence
         if not results.multi_face_landmarks:
             if self.last_face_detected_time is None:
                 self.last_face_detected_time = current_time
@@ -93,10 +125,10 @@ class DistractionDetector:
                 if time_without_face >= self.absence_threshold:
                     response['warning_message'] = f'Face not detected for {int(time_without_face)}s'
                     self._handle_warning('Face Missing')
-                    self.last_face_detected_time = current_time  # Reset timer after warning
+                    self.last_face_detected_time = current_time
             return response
 
-        # Face is detected
+        # Single face detected
         response['face_detected'] = True
         self.last_face_detected_time = None
         face_landmarks = results.multi_face_landmarks[0]
@@ -105,36 +137,66 @@ class DistractionDetector:
         mesh_coords = [(int(point.x * frame_width), int(point.y * frame_height))
                       for point in face_landmarks.landmark]
 
-        # Check iris positions
+        # Calibration phase (first 30 frames)
+        if self.calibration_frames < 30:
+            nose_x = mesh_coords[self.NOSE_TIP][0]
+            left_iris = np.array([mesh_coords[idx] for idx in self.LEFT_IRIS])
+            (l_cx, _), _ = cv2.minEnclosingCircle(left_iris)
+            
+            if self.baseline_nose_x is None:
+                self.baseline_nose_x = nose_x
+                self.baseline_iris_x = l_cx
+            else:
+                # Average with existing baseline
+                self.baseline_nose_x = (self.baseline_nose_x + nose_x) / 2
+                self.baseline_iris_x = (self.baseline_iris_x + l_cx) / 2
+            
+            self.calibration_frames += 1
+            if self.calibration_frames == 30:
+                self.calibration_complete = True
+            return response
+
+        # Extract iris positions
         left_iris = np.array([mesh_coords[idx] for idx in self.LEFT_IRIS])
         right_iris = np.array([mesh_coords[idx] for idx in self.RIGHT_IRIS])
         
         (l_cx, l_cy), _ = cv2.minEnclosingCircle(left_iris)
         (r_cx, r_cy), _ = cv2.minEnclosingCircle(right_iris)
 
-        # Calculate gaze offsets
-        left_eye_offset = abs(l_cx - frame_center_x)
-        right_eye_offset = abs(r_cx - frame_center_x)
-        vertical_offset = abs((l_cy + r_cy) / 2 - frame_center_y)
+        # Calculate gaze metrics
+        avg_iris_x = (l_cx + r_cx) / 2
+        avg_iris_y = (l_cy + r_cy) / 2
+        
+        # Use baseline if available
+        reference_x = self.baseline_nose_x if self.baseline_nose_x else frame_center_x
+        
+        horizontal_gaze_offset = abs(avg_iris_x - reference_x)
+        vertical_gaze_offset = abs(avg_iris_y - frame_center_y)
 
-        # Check head position using nose tip (landmark 1)
-        nose = face_landmarks.landmark[1]
-        nose_x = int(nose.x * frame_width)
-        head_offset = abs(nose_x - frame_center_x)
+        # Head position
+        nose_x = mesh_coords[self.NOSE_TIP][0]
+        head_offset = abs(nose_x - reference_x)
 
-        # Detect distractions - accumulate time before warning
+        # Detect distractions with improved logic
         is_distracted = False
         distraction_reason = ''
         
-        if left_eye_offset > self.GAZE_THRESHOLD or right_eye_offset > self.GAZE_THRESHOLD:
+        # Horizontal gaze detection (looking left/right)
+        if horizontal_gaze_offset > self.GAZE_THRESHOLD:
             is_distracted = True
-            distraction_reason = 'Looking away from screen'
-        elif vertical_offset > self.GAZE_THRESHOLD:
+            direction = 'left' if avg_iris_x < reference_x else 'right'
+            distraction_reason = f'Looking {direction}'
+        
+        # Vertical gaze detection (looking up/down)
+        elif vertical_gaze_offset > self.VERTICAL_GAZE_THRESHOLD:
             is_distracted = True
-            distraction_reason = 'Looking too high/low'
+            direction = 'down' if avg_iris_y > frame_center_y else 'up'
+            distraction_reason = f'Looking {direction}'
+        
+        # Head movement detection
         elif head_offset > self.HEAD_MOVEMENT_THRESHOLD:
             is_distracted = True
-            distraction_reason = 'Head position off-center'
+            distraction_reason = 'Head turned away'
         
         # Handle distraction accumulation
         if is_distracted:
@@ -145,12 +207,11 @@ class DistractionDetector:
                 if distraction_duration >= self.distraction_threshold:
                     response['warning_message'] = f'{distraction_reason} for {int(distraction_duration)}s'
                     self._handle_warning('Looking Away')
-                    self.distraction_start_time = current_time  # Reset timer after warning
+                    self.distraction_start_time = current_time
                 else:
-                    # Show message but don't warn yet
                     response['warning_message'] = f'{distraction_reason} ({int(distraction_duration)}s)'
         else:
-            # Student is focused - reset distraction timer
+            # Student is focused
             self.distraction_start_time = None
             self.last_focused_time = current_time
 

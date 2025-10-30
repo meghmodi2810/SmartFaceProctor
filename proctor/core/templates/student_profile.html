@@ -171,15 +171,40 @@
         grid-column: span 2;
     }
     .custom-input {
-        border: 1px solid #cbd5e1;
-        border-radius: 6px;
-        padding: .6rem 1rem;
-        transition: all .2s;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0.75rem 1.25rem;
+        transition: all 0.3s ease;
         width: 100%;
+        font-size: 0.95rem;
+        background: #ffffff;
+        color: #1e293b;
+    }
+    .custom-input:hover {
+        border-color: #cbd5e1;
+        background: #f8fafc;
     }
     .custom-input:focus {
         border-color: #4f8cff;
-        box-shadow: 0 0 0 3px rgba(79,140,255,.2);
+        box-shadow: 0 0 0 4px rgba(79,140,255,.15);
+        outline: none;
+        background: #ffffff;
+    }
+    .custom-input::placeholder {
+        color: #94a3b8;
+    }
+    textarea.custom-input {
+        resize: vertical;
+        min-height: 80px;
+    }
+    select.custom-input {
+        cursor: pointer;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+        background-position: right 0.75rem center;
+        background-repeat: no-repeat;
+        background-size: 1.5em 1.5em;
+        padding-right: 2.5rem;
+        appearance: none;
     }
     .panel-button {
         background: linear-gradient(90deg,#4f8cff 60%,#2d3e50 100%);

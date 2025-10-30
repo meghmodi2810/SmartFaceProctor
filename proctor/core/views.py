@@ -1421,7 +1421,7 @@ def report_bug(request):
 				browser=browser
 			)
 			messages.success(request, 'Bug report submitted successfully!')
-			return redirect('student_dashboard')
+			return redirect('student_exams')
 		else:
 			messages.error(request, 'Please fill in all required fields.')
 	

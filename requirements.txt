@@ -1,4 +1,4 @@
-# Core Django Framework
+# Core Dependencies
 Django==5.2.5
 asgiref==3.8.1
 sqlparse==0.5.3
@@ -19,35 +19,47 @@ google-auth==2.40.3
 google-auth-oauthlib==1.2.2
 httplib2==0.22.0
 
-# HTTP Requests
+# HTTP and API
 requests==2.32.3
 requests-oauthlib==2.0.0
 requests-toolbelt==1.0.0
 certifi==2025.4.26
-charset-normalizer==3.4.1
-idna==3.10
 urllib3==2.4.0
 
-# Additional AI/ML Libraries (for demo.py)
+# AI/ML Libraries
 torch==2.7.1
 torchvision==0.22.1
-# ultralytics  # Uncomment if YOLO functionality is needed
+scikit-learn==1.5.0
 
-# Utility Libraries
+# Image Processing
 Pillow==11.2.1
+opencv-python-headless==4.12.0.88
+
+# Security
+django-cors-headers==4.3.1
+python-dotenv==1.0.1
+pyjwt==2.8.0
+cryptography==42.0.5
+
+# Utilities
 python-dateutil==2.9.0.post0
 typing_extensions==4.13.2
 protobuf==4.25.8
+python-magic==0.4.27
+pytz==2024.1
 
-# Security and Authentication
-pyasn1==0.6.1
-pyasn1_modules==0.4.2
-rsa==4.9.1
-oauthlib==3.3.1
+# Development
+pylint-django==2.5.5
+black==24.4.2
+pytest==8.2.0
+pytest-django==4.8.0
 
-# Development and Testing
-colorama==0.4.6
+# Production (uncomment for deployment)
+# gunicorn==21.2.0
+# whitenoise==6.6.0
+# psycopg2-binary==2.9.9  # For PostgreSQL
 
-# Optional: For enhanced functionality
-# psutil==7.0.0  # For system monitoring
-# pandas==2.3.0  # For data manipulation if needed
+# Optional (uncomment as needed)
+# pandas==2.3.0
+# psutil==7.0.0
+# python-ldap==3.4.3  # For LDAP authentication

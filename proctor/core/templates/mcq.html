@@ -637,7 +637,7 @@
         </div>
 
         <!-- Questions Form -->
-        <form id="examForm" class="questions-list" onsubmit="submitExam(event)">
+        <form id="examForm" class="questions-list">
             {% csrf_token %}
             <input type="hidden" name="exam_id" value="{{ exam.id }}">
             {% for question in questions %}
@@ -1094,6 +1094,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const answered = document.querySelectorAll('.option-radio:checked').length;
         document.getElementById('answeredCount').textContent = answered;
         document.getElementById('submitBtn').disabled = answered < total;
+    }
+
+    // Add event listener to submit button
+    const examForm = document.getElementById('examForm');
+    if (examForm) {
+        examForm.addEventListener('submit', submitExam);
     }
 
     // Handle form submission
