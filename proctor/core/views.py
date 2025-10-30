@@ -574,7 +574,8 @@ def schedule_exam(request):
 		return JsonResponse({'error': 'Unauthorized'}, status=403)
 	
 	title = request.POST.get('examName')
-	warning_limit = request.POST.get('warningLimit')
+	warning_limit = int(request.POST.get('warningLimit', 3))
+	absence_threshold = int(request.POST.get('absenceThreshold', 10))
 	exam_date = request.POST.get('examDate')
 	exam_time = request.POST.get('examTime')
 	freeze_time = request.POST.get('freezeTime')
@@ -614,15 +615,17 @@ def schedule_exam(request):
 		student_selection = request.POST.get('student_selection', 'all')  # 'all', 'division', 'manual'
 		is_selective = False
 		
-		# Create Exam
+		# Create Exam with warning_limit and absence_threshold
 		exam = Exam.objects.create(
 			title=title,
 			date=date,
 			duration_minutes=duration_minutes,
 			created_by=request.user,
 			sheet_url=sheet_url,
-			description=f"Warning Limit: {warning_limit}",
-			is_selective=(student_selection != 'all')
+			description=f"Warning Limit: {warning_limit}, Absence Threshold: {absence_threshold}s",
+			is_selective=(student_selection != 'all'),
+			warning_limit=warning_limit,
+			absence_threshold=absence_threshold
 		)
 		
 		# Extract and save questions
@@ -832,9 +835,22 @@ def faculty_profile(request):
         # Update profile information
         user.first_name = request.POST.get('first_name', '')
         user.last_name = request.POST.get('last_name', '')
-        user.email = request.POST.get('email', '')
+        # Don't allow email change
+        # user.email = request.POST.get('email', '')
         user.dob = request.POST.get('dob')
-        user.gender = request.POST.get('gender')
+        
+        # Handle gender - convert full name to single character
+        gender_input = request.POST.get('gender', '')
+        if gender_input:
+            if gender_input.lower() in ['male', 'm']:
+                user.gender = 'M'
+            elif gender_input.lower() in ['female', 'f']:
+                user.gender = 'F'
+            elif gender_input.lower() in ['other', 'o']:
+                user.gender = 'O'
+            else:
+                user.gender = gender_input[0].upper() if len(gender_input) > 0 else None
+        
         user.mobile_number = request.POST.get('mobile_number')
         user.address = request.POST.get('address')
         user.department_id = request.POST.get('department')
@@ -1602,18 +1618,29 @@ def submit_exam(request, exam_id):
     
     try:
         import json
-        data = json.loads(request.body)
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Parse request body
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error in submit_exam: {e}")
+            return JsonResponse({'success': False, 'error': 'Invalid request data'})
         
         exam = Exam.objects.get(id=exam_id)
         
         # Check if exam is still ongoing
         current_time = timezone.now()
-        if current_time > exam.date + timezone.timedelta(minutes=exam.duration_minutes):
+        exam_end_time = exam.date + timezone.timedelta(minutes=exam.duration_minutes)
+        if current_time > exam_end_time:
+            logger.warning(f"Student {user.id} tried to submit exam {exam_id} after it ended")
             return JsonResponse({'success': False, 'error': 'Exam has ended'})
         
         # Check if student has already submitted
         existing_submission = Submission.objects.filter(student=user, exam=exam).first()
         if existing_submission:
+            logger.warning(f"Student {user.id} tried to submit exam {exam_id} twice")
             return JsonResponse({'success': False, 'error': 'You have already submitted this exam'})
         
         # Calculate score based on correct answers
@@ -1631,11 +1658,16 @@ def submit_exam(request, exam_id):
         score = (correct_count / total_questions * 100) if total_questions > 0 else 0
         
         # Create submission
-        submission = Submission.objects.create(
-            exam=exam,
-            student=user,
-            score=score
-        )
+        try:
+            submission = Submission.objects.create(
+                exam=exam,
+                student=user,
+                score=score
+            )
+            logger.info(f"Submission created: student={user.id}, exam={exam_id}, score={score}")
+        except Exception as e:
+            logger.error(f"Error creating submission: {e}")
+            return JsonResponse({'success': False, 'error': 'Failed to save submission'})
         
         # Mark exam attempt as completed
         try:
@@ -1644,8 +1676,10 @@ def submit_exam(request, exam_id):
                 exam_attempt.is_active = False
                 exam_attempt.ended_at = timezone.now()
                 exam_attempt.save()
+                logger.info(f"ExamAttempt marked as completed for student {user.id}")
         except Exception as e:
-            print(f"Error updating exam attempt: {e}")
+            logger.error(f"Error updating exam attempt: {e}")
+            # Don't fail the submission if attempt update fails
 
         # Stop the exam monitoring if it exists
         try:
@@ -1666,6 +1700,8 @@ def submit_exam(request, exam_id):
             del request.session['monitoring_active']
         request.session.modified = True
         
+        logger.info(f"Submission successful: student={user.id}, exam={exam_id}, score={score}")
+        
         return JsonResponse({
             'success': True, 
             'submission_id': submission.id,
@@ -1675,11 +1711,73 @@ def submit_exam(request, exam_id):
         })
         
     except Exam.DoesNotExist:
+        logger.error(f"Exam not found: {exam_id}")
         return JsonResponse({'success': False, 'error': 'Exam not found'})
     except json.JSONDecodeError:
+        logger.error(f"Invalid JSON data in submit_exam")
         return JsonResponse({'success': False, 'error': 'Invalid JSON data'})
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})
+        logger.error(f"Unexpected error in submit_exam: {e}", exc_info=True)
+        return JsonResponse({'success': False, 'error': f'An error occurred: {str(e)}'})
+
+
+@login_required
+def save_progress(request):
+    """Save student's partial exam answers (auto-save)"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Invalid request method'})
+    
+    user = request.user
+    if user.role != 'Student':
+        return JsonResponse({'success': False, 'error': 'Unauthorized'})
+    
+    try:
+        import json
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        data = json.loads(request.body)
+        exam_id = data.get('exam_id')
+        answers = data.get('answers', {})
+        
+        if not exam_id:
+            return JsonResponse({'success': False, 'error': 'Exam ID required'})
+        
+        # Get exam
+        exam = Exam.objects.get(id=exam_id)
+        
+        # Check if exam is still ongoing
+        current_time = timezone.now()
+        exam_end_time = exam.date + timezone.timedelta(minutes=exam.duration_minutes)
+        if current_time > exam_end_time:
+            return JsonResponse({'success': False, 'error': 'Exam has ended'})
+        
+        # Import ExamProgress model
+        from .models import ExamProgress
+        
+        # Update or create progress
+        progress, created = ExamProgress.objects.update_or_create(
+            exam=exam,
+            student=user,
+            defaults={'answers': answers}
+        )
+        
+        logger.info(f"Progress saved: student={user.id}, exam={exam_id}, questions={len(answers)}")
+        
+        return JsonResponse({
+            'success': True,
+            'saved_questions': len(answers),
+            'last_updated': progress.last_updated.isoformat()
+        })
+        
+    except Exam.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Exam not found'})
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error saving progress: {e}", exc_info=True)
+        return JsonResponse({'success': False, 'error': 'Failed to save progress'})
+
 
 def test_otp_system(request):
 	"""Test view to debug OTP system"""
@@ -2091,10 +2189,24 @@ def check_distraction(request):
         # Create detector and restore state
         detector = DistractionDetector()
         
-        # Get exam settings
+        # Get exam settings and check if exam is still ongoing
         if exam_id:
             try:
                 exam = Exam.objects.get(id=exam_id)
+                
+                # Check if exam has ended - if so, clear state and return
+                exam_end_time = exam.date + timezone.timedelta(minutes=exam.duration_minutes)
+                if timezone.now() > exam_end_time:
+                    # Exam has ended - clear session state
+                    if session_key in request.session:
+                        del request.session[session_key]
+                        request.session.modified = True
+                    return JsonResponse({
+                        'success': False,
+                        'exam_ended': True,
+                        'message': 'Exam has ended'
+                    })
+                
                 detector.set_warning_threshold(exam.warning_limit)
                 detector.set_absence_threshold(exam.absence_threshold)
                 detector_state['warning_limit'] = exam.warning_limit

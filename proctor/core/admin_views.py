@@ -927,6 +927,9 @@ def admin_divisions(request):
             if selected_sem_id:
                 selected_sem = Semester.objects.get(id=selected_sem_id, department=selected_dept)
                 divisions = Division.objects.filter(department=selected_dept, semester=selected_sem).order_by('name')
+            else:
+                # Show all divisions for this department regardless of semester
+                divisions = Division.objects.filter(department=selected_dept).order_by('name').distinct()
         except (Department.DoesNotExist, Semester.DoesNotExist):
             pass
     if request.method == 'POST':

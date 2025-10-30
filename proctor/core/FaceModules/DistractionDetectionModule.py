@@ -18,7 +18,7 @@ class DistractionDetector:
         self.warning_count = 0
         self.warning_limit = 3  # Default warning limit
         self.absence_threshold = 10  # Default absence threshold in seconds
-        self.distraction_threshold = 10  # Seconds of continuous distraction before warning
+        self.distraction_threshold = 15  # Seconds of continuous distraction before warning (increased from 10)
         
         # Tracking times
         self.last_face_detected_time = None
@@ -30,13 +30,13 @@ class DistractionDetector:
         self.freeze_start_time = None
         self.freeze_duration = 300  # 5 minutes in seconds
         self.last_warning_time = None
-        self.warning_cooldown = 5  # 5 seconds between warnings
+        self.warning_cooldown = 10  # 10 seconds between warnings (increased from 5)
         
-        # Constants for face detection
+        # Constants for face detection - MADE LESS SENSITIVE
         self.LEFT_IRIS = [474, 475, 476, 477]
         self.RIGHT_IRIS = [469, 470, 471, 472]
-        self.GAZE_THRESHOLD = 50  # pixels
-        self.HEAD_MOVEMENT_THRESHOLD = 100  # pixels
+        self.GAZE_THRESHOLD = 80  # pixels (increased from 50 - less sensitive)
+        self.HEAD_MOVEMENT_THRESHOLD = 150  # pixels (increased from 100 - less sensitive)
 
     def set_warning_threshold(self, limit):
         """Set the maximum number of warnings before freezing the exam"""

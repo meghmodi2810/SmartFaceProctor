@@ -1097,8 +1097,59 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Handle form submission
+    // Function to collect all selected answers
+    function collectAllAnswers() {
+        const answers = {};
+        document.querySelectorAll('.option-radio:checked').forEach(radio => {
+            const questionId = radio.name.replace('q', '');
+            answers[questionId] = radio.value;
+        });
+        return answers;
+    }
+    
+    // Auto-save progress every 30 seconds
+    let autoSaveInterval = null;
+    
+    async function saveProgress() {
+        const answers = collectAllAnswers();
+        
+        // Only save if there are answers
+        if (Object.keys(answers).length === 0) {
+            return;
+        }
+        
+        try {
+            const response = await fetch('/student/save-progress/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify({
+                    exam_id: '{{ exam.id }}',
+                    answers: answers
+                })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                console.log(`Progress saved: ${data.saved_questions} questions`);
+            }
+        } catch (error) {
+            console.error('Failed to save progress:', error);
+        }
+    }
+    
+    // Start auto-save interval (every 30 seconds)
+    autoSaveInterval = setInterval(saveProgress, 30000);
+    
     async function submitExam(event) {
         event.preventDefault();
+        
+        // Stop auto-save
+        if (autoSaveInterval) {
+            clearInterval(autoSaveInterval);
+        }
         
         const submitBtn = document.getElementById('submitBtn');
         const originalText = submitBtn.innerHTML;
@@ -1106,15 +1157,7 @@ document.addEventListener('DOMContentLoaded', function() {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
         
         // Collect all answers
-        const form = document.getElementById('examForm');
-        const formData = new FormData(form);
-        const answers = {};
-        
-        // Get all radio button values
-        document.querySelectorAll('.option-radio:checked').forEach(radio => {
-            const questionId = radio.name.replace('q', '');
-            answers[questionId] = radio.value;
-        });
+        const answers = collectAllAnswers();
         
         try {
             const response = await fetch('/student/submit-exam/{{ exam.id }}/', {

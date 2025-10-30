@@ -201,8 +201,9 @@
                 </div>
                 
                 <div class="form-group">
-                    <label class="required-field" for="email">Email Address</label>
-                    <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}" required>
+                    <label for="email">Email Address</label>
+                    <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}" disabled readonly style="background-color: #e9ecef; cursor: not-allowed;">
+                    <small class="form-text text-muted">Email cannot be changed. Contact admin if you need to update your email.</small>
                 </div>
                 
                 <div class="form-group">

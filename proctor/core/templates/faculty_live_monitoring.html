@@ -179,9 +179,12 @@
         <div class="exam-card" id="exam-{{ exam.id }}">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                 <div>
-                    <h2 class="exam-title">{{ exam.title }}</h2>
+                    <h2 class="exam-title" style="margin-bottom: 0;">{{ exam.title }}</h2>
                     <p style="color: #64748b; margin: 0;">{{ exam.date|date:"M d, Y - h:i A" }} | Duration: {{ exam.duration_minutes }} mins</p>
                 </div>
+                <button class="action-btn danger" onclick="endExam({{ exam.id }})" style="font-size: 1rem; padding: 0.75rem 1.5rem;">
+                    <i class="fas fa-stop-circle"></i> End Exam
+                </button>
                 <button class="refresh-btn" onclick="refreshExam({{ exam.id }})">
                     <i class="fas fa-sync-alt"></i> Refresh
                 </button>
@@ -286,6 +289,7 @@ function getCookie(name) {
         const cookies = document.cookie.split(';');
         for (let i = 0; i < cookies.length; i++) {
             const cookie = cookies[i].trim();
+            // Check if this cookie string begins with the name we want
             if (cookie.substring(0, name.length + 1) === (name + '=')) {
                 cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
                 break;
@@ -295,6 +299,8 @@ function getCookie(name) {
     return cookieValue;
 }
 
+const csrftoken = getCookie('csrftoken');
+
 async function cancelFreeze(examId, studentId) {
     if (!confirm('Cancel the freeze timer for this student?')) return;
     
@@ -303,7 +309,7 @@ async function cancelFreeze(examId, studentId) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
+                'X-CSRFToken': csrftoken
             },
             body: JSON.stringify({ exam_id: examId, student_id: studentId })
         });
@@ -329,7 +335,7 @@ async function resetAttempt(examId, studentId) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
+                'X-CSRFToken': csrftoken
             },
             body: JSON.stringify({ exam_id: examId, student_id: studentId })
         });
@@ -353,6 +359,32 @@ function viewViolations(examId, studentId) {
 
 function refreshExam(examId) {
     location.reload();
+}
+
+async function endExam(examId) {
+    if (!confirm('Are you sure you want to END this exam for all students? This action cannot be undone.')) return;
+    
+    try {
+        const response = await fetch('/faculty/end-exam/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({ exam_id: examId })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            alert(`Exam ended successfully. ${data.submissions_created} students' submissions were saved.`);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to end exam');
+    }
 }
 
 // Auto-refresh every 10 seconds

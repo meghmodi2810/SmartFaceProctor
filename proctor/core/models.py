@@ -121,6 +121,22 @@ class Submission(models.Model):
         return f"{self.student.username} - {self.exam.title}"
 
 
+class ExamProgress(models.Model):
+    """Store partial exam answers for auto-save functionality"""
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
+    student = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'role': 'Student'})
+    answers = models.JSONField(default=dict)  # {question_id: answer}
+    last_updated = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['exam', 'student']
+        ordering = ['-last_updated']
+
+    def __str__(self):
+        return f"{self.student.username} - {self.exam.title} (Progress)"
+
+
 class Violation(models.Model):
     VIOLATION_TYPES = (
         ('Distraction', 'Distraction'),
