@@ -1636,6 +1636,16 @@ def submit_exam(request, exam_id):
             student=user,
             score=score
         )
+        
+        # Mark exam attempt as completed
+        try:
+            exam_attempt = ExamAttempt.objects.filter(exam=exam, student=user, is_active=True).first()
+            if exam_attempt:
+                exam_attempt.is_active = False
+                exam_attempt.ended_at = timezone.now()
+                exam_attempt.save()
+        except Exception as e:
+            print(f"Error updating exam attempt: {e}")
 
         # Stop the exam monitoring if it exists
         try:
@@ -1646,11 +1656,15 @@ def submit_exam(request, exam_id):
         except Exception:
             pass  # Monitor might not exist, continue anyway
         
-        # Clear monitoring session data
+        # Clear monitoring session data and detector state
+        session_key = f'detector_{user.id}_{exam_id}'
+        if session_key in request.session:
+            del request.session[session_key]
         if 'active_exam_id' in request.session:
             del request.session['active_exam_id']
         if 'monitoring_active' in request.session:
             del request.session['monitoring_active']
+        request.session.modified = True
         
         return JsonResponse({
             'success': True, 
@@ -2063,45 +2077,34 @@ def check_distraction(request):
         # Get or create detector instance for this user's exam session
         session_key = f'detector_{request.user.id}_{exam_id}'
         
-        if session_key not in request.session:
-            # Create new detector for this session
-            detector = DistractionDetector()
-            
-            # Get exam settings
-            if exam_id:
-                try:
-                    exam = Exam.objects.get(id=exam_id)
-                    detector.set_warning_threshold(exam.warning_limit)
-                    detector.set_absence_threshold(exam.absence_threshold)
-                except Exam.DoesNotExist:
-                    detector.set_warning_threshold(warning_limit)
-                    detector.set_absence_threshold(absence_threshold)
-            else:
-                detector.set_warning_threshold(warning_limit)
-                detector.set_absence_threshold(absence_threshold)
-            
-            # Store detector state in session
-            request.session[session_key] = {
-                'warning_count': 0,
-                'is_frozen': False,
-                'freeze_start_time': None,
-                'last_face_time': None,
-                'absence_start_time': None
-            }
+        # Get detector state from session or initialize
+        detector_state = request.session.get(session_key, {
+            'warning_count': 0,
+            'is_frozen': False,
+            'freeze_start_time': None,
+            'warning_limit': 3,
+            'absence_threshold': 10,
+            'distraction_start_time': None,
+            'last_face_detected_time': None
+        })
         
-        # Get detector state from session
-        detector_state = request.session.get(session_key, {})
-        
-        # Create detector with current state
+        # Create detector and restore state
         detector = DistractionDetector()
+        
+        # Get exam settings
         if exam_id:
             try:
                 exam = Exam.objects.get(id=exam_id)
                 detector.set_warning_threshold(exam.warning_limit)
                 detector.set_absence_threshold(exam.absence_threshold)
+                detector_state['warning_limit'] = exam.warning_limit
+                detector_state['absence_threshold'] = exam.absence_threshold
             except Exam.DoesNotExist:
                 detector.set_warning_threshold(warning_limit)
                 detector.set_absence_threshold(absence_threshold)
+        else:
+            detector.set_warning_threshold(warning_limit)
+            detector.set_absence_threshold(absence_threshold)
         
         # Check if faculty has cancelled freeze for this student
         if exam_id and detector_state.get('is_frozen', False):
@@ -2123,23 +2126,40 @@ def check_distraction(request):
             except Exam.DoesNotExist:
                 pass
         
-        # Restore detector state
+        # Restore detector state from session
         detector.warning_count = detector_state.get('warning_count', 0)
         detector.is_exam_frozen = detector_state.get('is_frozen', False)
+        
+        # Restore time-based tracking
         if detector_state.get('freeze_start_time'):
             from datetime import datetime
             detector.freeze_start_time = datetime.fromisoformat(detector_state['freeze_start_time'])
         
+        if detector_state.get('distraction_start_time'):
+            from datetime import datetime
+            detector.distraction_start_time = datetime.fromisoformat(detector_state['distraction_start_time'])
+        
+        if detector_state.get('last_face_detected_time'):
+            from datetime import datetime
+            detector.last_face_detected_time = datetime.fromisoformat(detector_state['last_face_detected_time'])
+        
+        if detector_state.get('last_warning_time'):
+            from datetime import datetime
+            detector.last_warning_time = datetime.fromisoformat(detector_state['last_warning_time'])
+        
         # Process frame for distractions
         result = detector.detect_distraction(frame)
         
-        # Update session state
+        # Save updated detector state back to session
         request.session[session_key] = {
             'warning_count': detector.warning_count,
             'is_frozen': detector.is_exam_frozen,
             'freeze_start_time': detector.freeze_start_time.isoformat() if detector.freeze_start_time else None,
-            'last_face_time': None,
-            'absence_start_time': None
+            'distraction_start_time': detector.distraction_start_time.isoformat() if detector.distraction_start_time else None,
+            'last_face_detected_time': detector.last_face_detected_time.isoformat() if detector.last_face_detected_time else None,
+            'last_warning_time': detector.last_warning_time.isoformat() if detector.last_warning_time else None,
+            'warning_limit': detector.warning_limit,
+            'absence_threshold': detector.absence_threshold
         }
         request.session.modified = True
         
