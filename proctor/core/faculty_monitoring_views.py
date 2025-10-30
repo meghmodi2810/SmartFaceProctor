@@ -225,7 +225,13 @@ def end_exam(request):
         exam = get_object_or_404(Exam, id=exam_id, created_by=request.user)
         
         # Get all active attempts for this exam
-        from .models import Question, ExamProgress
+        from .models import Question
+        try:
+            from .models import ExamProgress
+            has_exam_progress = True
+        except ImportError:
+            has_exam_progress = False
+        
         active_attempts = ExamAttempt.objects.filter(exam=exam, is_active=True)
         
         submissions_created = 0
@@ -239,23 +245,28 @@ def end_exam(request):
             
             # Try to get saved progress
             score = 0
-            try:
-                progress = ExamProgress.objects.get(exam=exam, student=student)
-                answers = progress.answers
-                
-                # Calculate score from saved answers
-                questions = Question.objects.filter(exam=exam)
-                correct_count = 0
-                total_questions = questions.count()
-                
-                for question in questions:
-                    student_answer = answers.get(str(question.id), '')
-                    if student_answer == question.answer:
-                        correct_count += 1
-                
-                score = (correct_count / total_questions * 100) if total_questions > 0 else 0
-            except ExamProgress.DoesNotExist:
-                # No saved progress, score remains 0
+            if has_exam_progress:
+                try:
+                    from .models import ExamProgress
+                    progress = ExamProgress.objects.get(exam=exam, student=student)
+                    answers = progress.answers
+                    
+                    # Calculate score from saved answers
+                    questions = Question.objects.filter(exam=exam)
+                    correct_count = 0
+                    total_questions = questions.count()
+                    
+                    for question in questions:
+                        student_answer = answers.get(str(question.id), '')
+                        if student_answer == question.answer:
+                            correct_count += 1
+                    
+                    score = (correct_count / total_questions * 100) if total_questions > 0 else 0
+                except Exception:
+                    # No saved progress or table doesn't exist, score remains 0
+                    score = 0
+            else:
+                # ExamProgress model doesn't exist
                 score = 0
             
             # Create submission with calculated score

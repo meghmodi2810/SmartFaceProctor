@@ -1032,17 +1032,43 @@ document.addEventListener('DOMContentLoaded', function() {
     cleanupCamera(); // Clean up any existing camera first
     initializeCamera();
 
-    // Prevent back button navigation
+    // Prevent back button navigation and log violation
     history.pushState(null, null, location.href);
     window.onpopstate = function() {
+        // Log violation for trying to navigate away
+        fetch('/log-violation/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({
+                exam_id: '{{ exam.id }}',
+                violation_type: 'Navigation Attempt',
+                details: 'Student attempted to navigate away from exam'
+            })
+        });
+        
         history.go(1);
         showNotification('You cannot navigate away from the exam!', 'error');
     };
 
-    // Warn before leaving page
+    // Log violation when student leaves exam
     window.addEventListener('beforeunload', (e) => {
         e.preventDefault();
         e.returnValue = 'Are you sure you want to leave the exam? Your progress will be lost.';
+        
+        // Log violation - student left exam
+        const violationData = JSON.stringify({
+            exam_id: '{{ exam.id }}',
+            violation_type: 'Left Exam',
+            details: 'Student left the exam page'
+        });
+        
+        // Use sendBeacon for reliable data transmission even during page unload
+        const csrfToken = getCSRFToken();
+        const blob = new Blob([violationData], { type: 'application/json' });
+        navigator.sendBeacon('/log-violation/?csrfmiddlewaretoken=' + csrfToken, blob);
         
         // Cleanup
         if (distractionCheckInterval) {

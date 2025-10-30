@@ -1438,8 +1438,6 @@ def start_exam(request, exam_id):
 @login_required
 def report_bug(request):
 	user = request.user
-	if user.role != 'Student':
-		return redirect('faculty_dashboard')
 	
 	if request.method == 'POST':
 		bug_type = request.POST.get('bug_type')
@@ -1458,11 +1456,15 @@ def report_bug(request):
 				browser=browser
 			)
 			messages.success(request, 'Bug report submitted successfully!')
-			return redirect('student_exams')
+			# Redirect based on user role
+			if user.role == 'Faculty':
+				return redirect('faculty_dashboard')
+			else:
+				return redirect('student_exams')
 		else:
 			messages.error(request, 'Please fill in all required fields.')
 	
-	return render(request, 'report_bug.html', {'student': user})
+	return render(request, 'report_bug.html', {'student': user, 'user': user})
 
 @login_required
 def exam_instructions(request, exam_id):
@@ -1601,20 +1603,39 @@ def start_mcq_exam(request, exam_id):
         # Check if student has already submitted
         existing_submission = Submission.objects.filter(student=user, exam=exam).first()
         if existing_submission:
-            messages.error(request, 'You have already submitted this exam.')
-            return redirect('exam_results', exam_id=exam_id)
+            # Show error on exam page with redirect option
+            context = {
+                'exam': exam,
+                'error_message': 'You have already submitted this exam.',
+                'redirect_url': f'/student/exam-results/{exam_id}/',
+                'redirect_text': 'View Results',
+                'student': user
+            }
+            return render(request, 'exam_error.html', context)
         
         # Check if exam has questions
         if not questions.exists():
-            messages.error(request, 'This exam has no questions available.')
-            return redirect('student_exams')
+            context = {
+                'exam': exam,
+                'error_message': 'This exam has no questions available.',
+                'redirect_url': '/student/exams/',
+                'redirect_text': 'Back to Exams',
+                'student': user
+            }
+            return render(request, 'exam_error.html', context)
 
         # Check if student has already attempted the exam
         from .models import ExamAttempt
         existing_attempt = ExamAttempt.objects.filter(exam=exam, student=user).first()
         if existing_attempt and not existing_attempt.can_reattempt:
-            messages.error(request, 'You have already attempted this exam. Contact faculty if you need to reattempt.')
-            return redirect('student_exams')
+            context = {
+                'exam': exam,
+                'error_message': 'You have already attempted this exam. Contact faculty if you need to reattempt.',
+                'redirect_url': '/student/exams/',
+                'redirect_text': 'Back to Exams',
+                'student': user
+            }
+            return render(request, 'exam_error.html', context)
 
         # Create exam attempt record
         if existing_attempt:

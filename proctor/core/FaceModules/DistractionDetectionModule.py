@@ -17,8 +17,8 @@ class DistractionDetector:
         # Initialize state variables
         self.warning_count = 0
         self.warning_limit = 3  # Default warning limit
-        self.absence_threshold = 3  # VERY STRICT: 3 seconds
-        self.distraction_threshold = 4  # VERY STRICT: 4 seconds (was 8)
+        self.absence_threshold = 3  # Balanced: 3 seconds
+        self.distraction_threshold = 5  # Balanced: 5 seconds
         
         # Tracking times
         self.last_face_detected_time = None
@@ -46,12 +46,12 @@ class DistractionDetector:
         self.NOSE_TIP = 1
         self.CHIN = 152
         
-        # VERY AGGRESSIVE thresholds - catches everything
-        self.GAZE_THRESHOLD = 35  # VERY AGGRESSIVE: 35 pixels (was 50)
-        self.HEAD_MOVEMENT_THRESHOLD = 70  # VERY AGGRESSIVE: 70 pixels (was 100)
-        self.VERTICAL_GAZE_THRESHOLD = 30  # VERY AGGRESSIVE: 30 pixels (was 45)
-        self.MOVEMENT_THRESHOLD = 25  # NEW: Detect frame-to-frame movement
-        self.EXCESSIVE_MOVEMENT_THRESHOLD = 40  # NEW: Major movement detection
+        # BALANCED thresholds - 50% sensitivity
+        self.GAZE_THRESHOLD = 30  # Balanced: 30 pixels
+        self.HEAD_MOVEMENT_THRESHOLD = 60  # Balanced: 60 pixels
+        self.VERTICAL_GAZE_THRESHOLD = 25  # Balanced: 25 pixels
+        self.MOVEMENT_THRESHOLD = 20  # Balanced: 20 pixels
+        self.EXCESSIVE_MOVEMENT_THRESHOLD = 35  # Balanced: 35 pixels
         
         # Calibration data
         self.baseline_nose_x = None
