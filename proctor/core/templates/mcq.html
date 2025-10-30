@@ -1224,8 +1224,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     stream.getTracks().forEach(track => track.stop());
                 }
                 
-                // Redirect to results page
-                window.location.href = '/student/exam-results/{{ exam.id }}/';
+                // Redirect to feedback page (or results if no redirect_url)
+                window.location.href = data.redirect_url || '/student/exam-results/{{ exam.id }}/';
             } else {
                 alert('Error submitting exam: ' + (data.error || 'Unknown error'));
                 submitBtn.disabled = false;

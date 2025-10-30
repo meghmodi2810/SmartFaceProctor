@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Face Proctor - Intelligent Examination System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #e0e7ff 0%, #f4f6fb 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .navbar {
+            background: linear-gradient(90deg, #2d3e50 60%, #4f8cff 100%);
+            color: #fff;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 16px rgba(44,62,80,0.10);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .navbar .logo {
+            font-size: 1.7rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-shadow: 1px 2px 8px #1a2533a0;
+        }
+
+        .navbar ul {
+            list-style: none;
+            display: flex;
+            gap: 2rem;
+            margin: 0;
+            padding: 0;
+        }
+
+        .navbar ul li a {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s, transform 0.2s;
+            padding: 0.3rem 0.8rem;
+            border-radius: 5px;
+        }
+
+        .navbar ul li a:hover {
+            color: #ffd700;
+            background: rgba(255,255,255,0.08);
+            transform: translateY(-2px) scale(1.08);
+        }
+
+        .hero {
+            margin-top: 72px;
+            background: url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1920&q=80') center/cover;
+            height: 600px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: white;
+            animation: fadeIn 1s ease;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(45, 62, 80, 0.85);
+        }
+
+        .hero-content {
+            position: relative;
+            max-width: 800px;
+            padding: 2rem;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        .button {
+            background: linear-gradient(90deg, #4f8cff 60%, #2d3e50 100%);
+            color: #fff;
+            padding: 1rem 2rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(79,140,255,0.4);
+        }
+
+        .button.secondary {
+            background: transparent;
+            border: 2px solid #fff;
+        }
+
+        .features-section {
+            padding: 5rem 2rem;
+            background: white;
+        }
+
+        .section-title {
+            text-align: center;
+            color: #2d3e50;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+            position: relative;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 4px;
+            background: linear-gradient(90deg, #4f8cff 60%, #2d3e50 100%);
+            border-radius: 2px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .feature-card {
+            background: rgba(255,255,255,0.95);
+            border-radius: 18px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(44,62,80,0.13);
+            transition: transform 0.3s ease;
+            text-align: center;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            color: #4f8cff;
+        }
+
+        .portal-section {
+            padding: 5rem 2rem;
+            background: linear-gradient(135deg, #e0e7ff 0%, #f4f6fb 100%);
+        }
+
+        .portal-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 3rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .portal-card {
+            background: white;
+            border-radius: 18px;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(44,62,80,0.13);
+            transition: all 0.3s ease;
+        }
+
+        .portal-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 12px 48px rgba(44,62,80,0.2);
+        }
+
+        .portal-card img {
+            width: 100%;
+            max-width: 200px;
+            height: auto;
+            margin-bottom: 1.5rem;
+            border-radius: 10px;
+        }
+
+        .steps-section {
+            padding: 5rem 2rem;
+            background: white;
+        }
+
+        .steps-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .step {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 3rem;
+            position: relative;
+            padding: 2rem;
+            background: rgba(255,255,255,0.95);
+            border-radius: 18px;
+            box-shadow: 0 8px 32px rgba(44,62,80,0.13);
+        }
+
+        .step-number {
+            background: linear-gradient(90deg, #4f8cff 60%, #2d3e50 100%);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .footer {
+            background: linear-gradient(90deg, #2d3e50 60%, #4f8cff 100%);
+            color: white;
+            padding: 4rem 2rem 2rem;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 3rem;
+        }
+
+        .footer-section h3 {
+            color: #ffd700;
+            margin-bottom: 1.5rem;
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section ul li {
+            margin-bottom: 0.8rem;
+        }
+
+        .footer-section a {
+            color: white;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-section a:hover {
+            color: #ffd700;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .copyright {
+            text-align: center;
+            padding-top: 2rem;
+            margin-top: 2rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 768px) {
+            .hero {
+                height: 500px;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .navbar {
+                padding: 1rem;
+            }
+
+            .navbar ul {
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">Smart Face Proctor</div>
+        <ul>
+            <li><a href="{% url 'login' %}">Login</a></li>
+            <li><a href="{% url 'register' %}">Register</a></li>
+        </ul>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Smart Face Proctor</h1>
+            <p>Experience secure and intelligent online examinations with advanced AI-powered proctoring</p>
+            
+        </div>
+    </section>
+
+    <section class="features-section">
+        <h2 class="section-title">Key Features</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🔒</div>
+                <h3>Advanced Security</h3>
+                <p>AI-powered facial recognition and behavior monitoring ensure exam integrity.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">👁️</div>
+                <h3>Real-time Monitoring</h3>
+                <p>Continuous monitoring with instant alerts for suspicious activities.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Detailed Analytics</h3>
+                <p>Comprehensive reports and performance insights for better assessment.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔄</div>
+                <h3>Automated Proctoring</h3>
+                <p>Seamless and efficient examination process with minimal human intervention.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="portal-section">
+        <h2 class="section-title">Choose Your Portal</h2>
+        <div class="portal-cards">
+            <div class="portal-card">
+                <div class="feature-icon">👨‍🎓</div>
+                <h3>Student Portal</h3>
+                <ul style="text-align: left; list-style: none; margin: 1.5rem 0;">
+                    <li>✓ Take exams securely</li>
+                    <li>✓ View upcoming exams</li>
+                    <li>✓ Check results instantly</li>
+                    <li>✓ Submit feedback</li>
+                </ul>
+                <a href="{% url 'login' %}" class="button">Enter Student Portal</a>
+            </div>
+            <div class="portal-card">
+                <div class="feature-icon">👨‍🏫</div>
+                <h3>Faculty Portal</h3>
+                <ul style="text-align: left; list-style: none; margin: 1.5rem 0;">
+                    <li>✓ Create and manage exams</li>
+                    <li>✓ Monitor students</li>
+                    <li>✓ View analytics</li>
+                    <li>✓ Generate reports</li>
+                </ul>
+                <a href="{% url 'login' %}" class="button">Enter Faculty Portal</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="steps-section">
+        <h2 class="section-title">How It Works</h2>
+        <div class="steps-container">
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h3>Register & Setup</h3>
+                    <p>Create your account and complete the initial facial recognition setup for secure authentication.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h3>Choose Your Exam</h3>
+                    <p>Select from available examinations or create new ones if you're a faculty member.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h3>Verify Identity</h3>
+                    <p>Complete the facial verification process before starting your examination session.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h3>Begin Examination</h3>
+                    <p>Start your exam with continuous AI proctoring ensuring a fair and secure environment.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>About Smart Face Proctor</h3>
+                <p>An advanced online examination system powered by AI technology to ensure academic integrity and fair assessment.</p>
+            </div>
+            <div class="footer-section">
+                <h3>Quick Links</h3>
+                <ul>
+                    <li><a href="{% url 'login' %}">Student Login</a></li>
+                    <li><a href="{% url 'login' %}">Faculty Login</a></li>
+                    <li><a href="{% url 'register' %}">Register</a></li>
+                    <li><a href="#">Help Center</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Contact Us</h3>
+                <p>Email: support@smartfaceproctor.com</p>
+                <p>Phone: (555) 123-4567</p>
+                <div class="social-links">
+                    <a href="#" title="Facebook">📱</a>
+                    <a href="#" title="Twitter">📧</a>
+                    <a href="#" title="LinkedIn">💼</a>
+                    <a href="#" title="Instagram">📸</a>
+                </div>
+            </div>
+        </div>
+        <div class="copyright">
+            &copy; 2025 <span style="color: #ffd700">Smart Face Proctor</span> | Designed for Academic Excellence
+        </div>
+    </footer>
+
+    <script>
+        // Animate elements on scroll
+        function isElementInViewport(el) {
+            const rect = el.getBoundingClientRect();
+            return (
+                rect.top >= 0 &&
+                rect.left >= 0 &&
+                rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+                rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+            );
+        }
+
+        function handleScroll() {
+            document.querySelectorAll('.feature-card, .portal-card, .step').forEach(element => {
+                if (isElementInViewport(element)) {
+                    element.style.opacity = '1';
+                    element.style.transform = 'translateY(0)';
+                }
+            });
+        }
+
+        window.addEventListener('scroll', handleScroll);
+        window.addEventListener('load', handleScroll);
+    </script>
+</body>
+</html>

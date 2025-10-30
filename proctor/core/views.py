@@ -46,7 +46,7 @@ def home_redirect(request):
 
 def home(request):
     """Landing page view"""
-    return render(request, 'home.html')
+    return render(request, 'homepage.html')
 
 def login_view(request):
     # Check if user is already logged in
@@ -822,6 +822,71 @@ def schedule_exam_page(request):
     }
     
     return render(request, 'faculty_schedule.html', context)
+
+@login_required
+def exam_feedback(request, exam_id):
+    """Show feedback form after exam submission"""
+    user = request.user
+    if user.role != 'Student':
+        return redirect('faculty_dashboard')
+    
+    try:
+        exam = Exam.objects.get(id=exam_id)
+        submission = Submission.objects.get(exam=exam, student=user)
+        
+        # Check if feedback already exists
+        from .models import ExamFeedback
+        existing_feedback = ExamFeedback.objects.filter(exam=exam, student=user).first()
+        if existing_feedback:
+            # Already submitted feedback, redirect to results
+            return redirect('exam_results', exam_id=exam_id)
+        
+        context = {
+            'exam': exam,
+            'submission': submission,
+            'student': user
+        }
+        return render(request, 'exam_feedback.html', context)
+    except (Exam.DoesNotExist, Submission.DoesNotExist):
+        messages.error(request, 'Exam or submission not found.')
+        return redirect('student_exams')
+
+@login_required
+def submit_feedback(request, exam_id):
+    """Handle feedback form submission"""
+    if request.method != 'POST':
+        return redirect('exam_feedback', exam_id=exam_id)
+    
+    user = request.user
+    if user.role != 'Student':
+        return redirect('faculty_dashboard')
+    
+    try:
+        exam = Exam.objects.get(id=exam_id)
+        rating = request.POST.get('rating')
+        description = request.POST.get('description', '').strip()
+        
+        if not rating:
+            messages.error(request, 'Please provide a rating.')
+            return redirect('exam_feedback', exam_id=exam_id)
+        
+        # Create feedback
+        from .models import ExamFeedback
+        ExamFeedback.objects.create(
+            exam=exam,
+            student=user,
+            rating=int(rating),
+            description=description if description else None
+        )
+        
+        messages.success(request, 'Thank you for your feedback!')
+        return redirect('exam_results', exam_id=exam_id)
+    except Exam.DoesNotExist:
+        messages.error(request, 'Exam not found.')
+        return redirect('student_exams')
+    except Exception as e:
+        messages.error(request, f'Error submitting feedback: {str(e)}')
+        return redirect('exam_feedback', exam_id=exam_id)
 
 @login_required
 def exam_scheduling_guide(request):
@@ -1765,7 +1830,8 @@ def submit_exam(request, exam_id):
             'submission_id': submission.id,
             'score': score,
             'correct_count': correct_count,
-            'total_questions': total_questions
+            'total_questions': total_questions,
+            'redirect_url': f'/exam-feedback/{exam_id}/'
         })
         
     except Exam.DoesNotExist:

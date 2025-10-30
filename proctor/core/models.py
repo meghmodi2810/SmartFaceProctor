@@ -131,10 +131,22 @@ class ExamProgress(models.Model):
 
     class Meta:
         unique_together = ['exam', 'student']
-        ordering = ['-last_updated']
+
+
+class ExamFeedback(models.Model):
+    """Store student feedback after completing exam"""
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='feedbacks')
+    student = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'role': 'Student'})
+    rating = models.IntegerField(choices=[(i, f'{i} Star{"s" if i > 1 else ""}') for i in range(1, 6)])  # 1-5 stars
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['exam', 'student']
+        ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.student.username} - {self.exam.title} (Progress)"
+        return f"{self.student.username} - {self.exam.title} ({self.rating} stars)"
 
 
 class Violation(models.Model):

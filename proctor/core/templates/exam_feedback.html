@@ -1,0 +1,311 @@
+{% extends 'student_base.html' %}
+
+{% block title %}Exam Feedback - Proctoring System{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    }
+    
+    .feedback-container {
+        max-width: 600px;
+        width: 100%;
+        background: white;
+        border-radius: 20px;
+        padding: 3rem;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        animation: slideIn 0.5s ease;
+    }
+    
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .feedback-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    .feedback-header h1 {
+        color: #2d3e50;
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .feedback-header p {
+        color: #64748b;
+        font-size: 1.1rem;
+    }
+    
+    .exam-info {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        border-left: 4px solid #667eea;
+    }
+    
+    .exam-info h3 {
+        color: #2d3e50;
+        margin: 0 0 0.5rem 0;
+        font-size: 1.2rem;
+    }
+    
+    .exam-info p {
+        color: #64748b;
+        margin: 0.25rem 0;
+        font-size: 0.95rem;
+    }
+    
+    .form-group {
+        margin-bottom: 2rem;
+    }
+    
+    .form-group label {
+        display: block;
+        color: #2d3e50;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+    }
+    
+    .rating-container {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        padding: 1rem 0;
+    }
+    
+    .star-input {
+        display: none;
+    }
+    
+    .star-label {
+        cursor: pointer;
+        font-size: 3rem;
+        color: #ddd;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+    
+    .star-label:hover {
+        transform: scale(1.2);
+    }
+    
+    .star-input:checked ~ .star-label,
+    .star-label:hover,
+    .star-label:hover ~ .star-label {
+        color: #fbbf24;
+        text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+    }
+    
+    .rating-text {
+        text-align: center;
+        color: #64748b;
+        margin-top: 0.5rem;
+        font-size: 1rem;
+        min-height: 1.5rem;
+    }
+    
+    textarea {
+        width: 100%;
+        padding: 1rem;
+        border: 2px solid #e0e7ff;
+        border-radius: 12px;
+        font-size: 1rem;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        resize: vertical;
+        min-height: 120px;
+        transition: all 0.3s ease;
+    }
+    
+    textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    .button-group {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+    
+    .btn {
+        flex: 1;
+        padding: 1rem;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 1rem;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-primary:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    .btn-secondary {
+        background: #f8fafc;
+        color: #667eea;
+        border: 2px solid #e0e7ff;
+    }
+    
+    .btn-secondary:hover {
+        background: #e0e7ff;
+        transform: translateY(-2px);
+    }
+    
+    .required {
+        color: #ef4444;
+        margin-left: 0.25rem;
+    }
+    
+    .optional {
+        color: #64748b;
+        font-weight: 400;
+        font-size: 0.9rem;
+        margin-left: 0.5rem;
+    }
+    
+    @media (max-width: 640px) {
+        .feedback-container {
+            padding: 2rem 1.5rem;
+        }
+        
+        .feedback-header h1 {
+            font-size: 1.5rem;
+        }
+        
+        .star-label {
+            font-size: 2.5rem;
+        }
+        
+        .button-group {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="feedback-container">
+    <div class="feedback-header">
+        <h1>📝 Exam Feedback</h1>
+        <p>Help us improve by sharing your experience</p>
+    </div>
+    
+    <div class="exam-info">
+        <h3>{{ exam.title }}</h3>
+        <p>📅 {{ exam.date|date:"F d, Y" }} at {{ exam.date|time:"H:i" }}</p>
+        <p>⏱️ Duration: {{ exam.duration_minutes }} minutes</p>
+        <p>📊 Your Score: {{ submission.score|floatformat:1 }}%</p>
+    </div>
+    
+    <form method="post" action="{% url 'submit_feedback' exam.id %}" id="feedbackForm">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label>
+                Rate Your Experience
+                <span class="required">*</span>
+            </label>
+            <div class="rating-container">
+                <input type="radio" id="star5" name="rating" value="5" class="star-input" required>
+                <label for="star5" class="star-label" data-rating="5">★</label>
+                <input type="radio" id="star4" name="rating" value="4" class="star-input">
+                <label for="star4" class="star-label" data-rating="4">★</label>
+                <input type="radio" id="star3" name="rating" value="3" class="star-input">
+                <label for="star3" class="star-label" data-rating="3">★</label>
+                <input type="radio" id="star2" name="rating" value="2" class="star-input">
+                <label for="star2" class="star-label" data-rating="2">★</label>
+                <input type="radio" id="star1" name="rating" value="1" class="star-input">
+                <label for="star1" class="star-label" data-rating="1">★</label>
+            </div>
+            <div class="rating-text" id="ratingText"></div>
+        </div>
+        
+        <div class="form-group">
+            <label>
+                Additional Comments
+                <span class="optional">(optional)</span>
+            </label>
+            <textarea name="description" id="description" placeholder="Share your thoughts about the exam experience..."></textarea>
+        </div>
+        
+        <div class="button-group">
+            <button type="submit" class="btn btn-primary" id="submitBtn">
+                <i class="fas fa-paper-plane"></i>
+                Submit Feedback
+            </button>
+            <a href="{% url 'student_exams' %}" class="btn btn-secondary">
+                <i class="fas fa-times"></i>
+                Skip
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+    const ratingInputs = document.querySelectorAll('.star-input');
+    const ratingText = document.getElementById('ratingText');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    const ratingMessages = {
+        5: 'Excellent! ⭐⭐⭐⭐⭐',
+        4: 'Great! ⭐⭐⭐⭐',
+        3: 'Good ⭐⭐⭐',
+        2: 'Fair ⭐⭐',
+        1: 'Needs Improvement ⭐'
+    };
+    
+    // Update rating text when star is selected
+    ratingInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            const rating = this.value;
+            ratingText.textContent = ratingMessages[rating];
+            ratingText.style.color = rating >= 4 ? '#10b981' : rating >= 3 ? '#f59e0b' : '#ef4444';
+        });
+    });
+    
+    // Form validation
+    document.getElementById('feedbackForm').addEventListener('submit', function(e) {
+        const ratingSelected = document.querySelector('.star-input:checked');
+        if (!ratingSelected) {
+            e.preventDefault();
+            alert('Please select a rating before submitting!');
+            return false;
+        }
+    });
+</script>
+{% endblock %}
