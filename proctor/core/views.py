@@ -640,7 +640,17 @@ def schedule_exam(request):
 		
 		# Assign students based on selection
 		from .models import User, ExamAssignment
-		if student_selection == 'division':
+		if student_selection == 'department':
+			department_ids = request.POST.getlist('department_ids')
+			if department_ids:
+				students = User.objects.filter(role='Student', department_id__in=department_ids, is_active=True)
+				for student in students:
+					ExamAssignment.objects.get_or_create(
+						exam=exam,
+						student=student,
+						defaults={'assigned_by': request.user, 'is_active': True}
+					)
+		elif student_selection == 'division':
 			division_ids = request.POST.getlist('division_ids')
 			if division_ids:
 				students = User.objects.filter(role='Student', division_id__in=division_ids, is_active=True)
@@ -1041,8 +1051,8 @@ def student_exams(request):
     
     from .models import ExamAssignment
     # Filter exams: if exam is_selective=True, only show if student is assigned
-    # Optimize: avoid prefetching questions here (expensive on list view)
-    all_exams = Exam.objects.select_related('created_by').only('id','title','date','duration_minutes','created_by_id','is_selective').order_by('date')
+    # If is_selective=False (exam for all students), show to everyone
+    all_exams = Exam.objects.select_related('created_by').only('id','title','date','duration_minutes','created_by_id','is_selective').order_by('-date')
     
     # Filter based on selective assignment
     if all_exams.exists():
@@ -1051,10 +1061,13 @@ def student_exams(request):
             student=user, exam_id__in=[e.id for e in all_exams], is_active=True
         ).values_list('exam_id', flat=True))
         
-        # Only show non-selective exams OR selective exams where student is assigned
+        # Show exams based on is_selective flag:
+        # - is_selective=False: Show to ALL students (exam for all)
+        # - is_selective=True: Show only if student is in selective_exam_ids
         filtered_exams = []
         for exam in all_exams:
-            if not exam.is_selective or exam.id in selective_exam_ids:
+            # Show if exam is NOT selective (available to all) OR student is assigned
+            if exam.is_selective == False or exam.id in selective_exam_ids:
                 filtered_exams.append(exam)
         all_exams = filtered_exams
     

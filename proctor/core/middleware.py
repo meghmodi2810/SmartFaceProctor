@@ -2,7 +2,13 @@ from django.shortcuts import redirect
 from django.urls import reverse, resolve
 from django.conf import settings
 from django.contrib import messages
+from django.utils.deprecation import MiddlewareMixin
+from django.utils import timezone
 from .models import Department
+from .monitoring_cleanup import cleanup_exam_monitoring
+import logging
+
+logger = logging.getLogger(__name__)
 
 class LoginRequiredMiddleware:
     def __init__(self, get_response):
@@ -77,3 +83,18 @@ class ProfileCompletionMiddleware:
                     return redirect('faculty_profile')
         
         return self.get_response(request)
+
+class ExamMonitoringMiddleware(MiddlewareMixin):
+    """Middleware to handle exam monitoring cleanup"""
+    
+    def process_request(self, request):
+        try:
+            # Run cleanup periodically (every ~5 minutes)
+            from django.core.cache import cache
+            last_cleanup = cache.get('last_monitoring_cleanup')
+            if not last_cleanup or (timezone.now() - last_cleanup).total_seconds() > 300:
+                cleanup_exam_monitoring(request)
+                cache.set('last_monitoring_cleanup', timezone.now())
+        except Exception as e:
+            logger.error(f"Error in ExamMonitoringMiddleware: {e}")
+        return None

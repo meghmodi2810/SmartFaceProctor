@@ -133,6 +133,8 @@ class Violation(models.Model):
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='violations')
     student = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'role': 'Student'})
     type = models.CharField(max_length=50, choices=VIOLATION_TYPES)  # Increased from 20 to 50
+    details = models.TextField(blank=True, null=True)  # Additional details about the violation
+    message = models.CharField(max_length=255, blank=True, null=True)  # Warning message shown to student
     timestamp = models.DateTimeField(auto_now_add=True)
     is_frozen = models.BooleanField(default=False)  # Track if this violation caused freeze
     freeze_cancelled_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='cancelled_freezes', limit_choices_to={'role': 'Faculty'})
@@ -149,6 +151,7 @@ class ExamAttempt(models.Model):
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='attempts')
     student = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'role': 'Student'})
     started_at = models.DateTimeField(auto_now_add=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     can_reattempt = models.BooleanField(default=False)  # Faculty can enable this
     reset_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='exam_resets', limit_choices_to={'role': 'Faculty'})

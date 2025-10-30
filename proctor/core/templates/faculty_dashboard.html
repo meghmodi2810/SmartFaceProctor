@@ -109,12 +109,30 @@
         margin-bottom: 1rem;
         animation: fadeInDash 0.6s ease-out forwards;
     }
+    .welcome-section {
+        text-align: center;
+        margin-bottom: 2rem;
+        animation: fadeInDash 0.6s ease-out forwards;
+    }
+    .welcome-section h1 {
+        font-size: 2rem;
+        color: #2d3e50;
+        margin-bottom: 0.5rem;
+    }
+    .welcome-section .welcome-subtitle {
+        font-size: 1.2rem;
+        color: #4b5563;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="main">
     <div class="dashboard">
+        <div class="welcome-section">
+            <h1>Welcome back, {{ request.user.get_full_name }}</h1>
+            <p class="welcome-subtitle">Here's your proctoring dashboard overview</p>
+        </div>
 
         {% if messages %}
         <div class="messages-container">

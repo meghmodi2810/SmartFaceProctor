@@ -4,7 +4,7 @@ from django.shortcuts import redirect
 from django.contrib import messages
 from django.utils.html import format_html
 from django.urls import reverse
-from .models import User, BugReport
+from .models import User, BugReport, Division, Semester, Department, Exam
 import os
 from django.conf import settings
 
@@ -70,3 +70,36 @@ class BugReportAdmin(admin.ModelAdmin):
         return super().get_queryset(request).select_related('reporter')
 
 admin.site.register(BugReport, BugReportAdmin)
+
+class DepartmentAdmin(admin.ModelAdmin):
+    list_display = ('name', 'is_active', 'created_at')
+    list_filter = ('is_active',)
+    search_fields = ('name',)
+    ordering = ('name',)
+
+class SemesterAdmin(admin.ModelAdmin):
+    list_display = ('name', 'department', 'is_active', 'created_at')
+    list_filter = ('department', 'is_active')
+    search_fields = ('name', 'department__name')
+    ordering = ('department', 'name')
+
+class DivisionAdmin(admin.ModelAdmin):
+    list_display = ('name', 'department', 'semester', 'is_active', 'created_at')
+    list_filter = ('department', 'semester', 'is_active')
+    search_fields = ('name', 'department__name', 'semester__name')
+    ordering = ('department', 'semester', 'name')
+    
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if (db_field.name == "semester"):
+            if "department" in request.GET:
+                kwargs["queryset"] = Semester.objects.filter(
+                    department_id=request.GET["department"]
+                )
+            else:
+                kwargs["queryset"] = Semester.objects.none()
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+# Register the new admin classes
+admin.site.register(Department, DepartmentAdmin)
+admin.site.register(Semester, SemesterAdmin)
+admin.site.register(Division, DivisionAdmin)

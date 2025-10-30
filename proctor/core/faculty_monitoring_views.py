@@ -4,7 +4,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.db.models import Count, Q, Avg, F
 from django.db import models
-from .models import Exam, User, Violation, ExamAttempt, Submission
+from .models import Exam, User, Violation, ExamAttempt, Submission, ExamAssignment
 import json
 
 
@@ -149,7 +149,7 @@ def cancel_freeze(request):
 
 @login_required
 def reset_exam_attempt(request):
-    """Allow a student to reattempt an exam"""
+    """Allow faculty to reset a student's exam attempt for reappearing"""
     if request.method != 'POST':
         return JsonResponse({'error': 'Invalid method'}, status=405)
     
@@ -164,11 +164,18 @@ def reset_exam_attempt(request):
         exam = get_object_or_404(Exam, id=exam_id, created_by=request.user)
         student = get_object_or_404(User, id=student_id, role='Student')
         
-        # Get or create exam attempt
+        # Clear previous submission if exists
+        Submission.objects.filter(exam=exam, student=student).delete()
+        
+        # Reset violations
+        Violation.objects.filter(exam=exam, student=student).update(is_frozen=False)
+        
+        # Update or create exam attempt
         attempt, created = ExamAttempt.objects.get_or_create(
             exam=exam,
             student=student,
             defaults={
+                'is_active': True,
                 'can_reattempt': True,
                 'reset_by': request.user,
                 'reset_at': timezone.now()
@@ -176,18 +183,29 @@ def reset_exam_attempt(request):
         )
         
         if not created:
-            # Update existing attempt
+            attempt.is_active = True
             attempt.can_reattempt = True
             attempt.reset_by = request.user
             attempt.reset_at = timezone.now()
             attempt.save()
         
-        # Delete existing submission if any (optional - you may want to keep it)
-        # Submission.objects.filter(exam=exam, student=student).delete()
+        # Log the reset action
+        from django.contrib.admin.models import LogEntry, CHANGE
+        from django.contrib.contenttypes.models import ContentType
+        LogEntry.objects.create(
+            user_id=request.user.id,
+            content_type_id=ContentType.objects.get_for_model(exam).id,
+            object_id=exam.id,
+            object_repr=str(exam),
+            action_flag=CHANGE,
+            change_message=f'Reset exam attempt for student {student.username}'
+        )
         
         return JsonResponse({
             'success': True,
-            'message': 'Student can now reattempt the exam'
+            'message': f'Exam reset successful for {student.get_full_name() or student.username}',
+            'student_name': student.get_full_name() or student.username,
+            'reset_time': timezone.now().isoformat()
         })
         
     except Exception as e:
@@ -311,3 +329,142 @@ def exam_analytics(request, exam_id):
     }
     
     return render(request, 'exam_analytics.html', context)
+
+
+@login_required
+def get_exam_status_updates(request, exam_id):
+    """AJAX endpoint for getting real-time exam status updates"""
+    if request.user.role != 'Faculty':
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    
+    try:
+        exam = get_object_or_404(Exam, id=exam_id, created_by=request.user)
+        current_time = timezone.now()
+        exam_end_time = exam.date + timezone.timedelta(minutes=exam.duration_minutes)
+        
+        # Get all students with active attempts or violations
+        attempt_students = set(exam.attempts.filter(is_active=True).values_list('student_id', flat=True))
+        violation_students = set(Violation.objects.filter(
+            exam=exam,
+            timestamp__gte=current_time - timezone.timedelta(minutes=5)
+        ).values_list('student_id', flat=True))
+        
+        all_student_ids = attempt_students | violation_students
+        
+        students_data = []
+        for student in User.objects.filter(id__in=all_student_ids):
+            # Get recent violations
+            recent_violations = Violation.objects.filter(
+                exam=exam,
+                student=student,
+                timestamp__gte=current_time - timezone.timedelta(minutes=5)
+            ).order_by('-timestamp')
+            
+            # Get frozen status
+            is_frozen = Violation.objects.filter(
+                exam=exam,
+                student=student,
+                is_frozen=True,
+                freeze_cancelled_by__isnull=True
+            ).exists()
+            
+            # Get submission status
+            has_submitted = Submission.objects.filter(exam=exam, student=student).exists()
+            
+            students_data.append({
+                'student_id': student.id,
+                'student_name': student.get_full_name() or student.username,
+                'violations_count': recent_violations.count(),
+                'is_frozen': is_frozen,
+                'has_submitted': has_submitted,
+                'recent_violations': [
+                    {
+                        'type': v.type,
+                        'timestamp': v.timestamp.isoformat(),
+                        'message': v.message if hasattr(v, 'message') else None
+                    } for v in recent_violations[:5]
+                ]
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'exam_id': exam.id,
+            'current_time': current_time.isoformat(),
+            'exam_end_time': exam_end_time.isoformat(),
+            'is_exam_ended': current_time > exam_end_time,
+            'students': students_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def update_exam_assignment(request):
+    """Update exam assignment when faculty enables reappearing"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Invalid method'}, status=405)
+    
+    if request.user.role != 'Faculty':
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    
+    try:
+        data = json.loads(request.body)
+        exam_id = data.get('exam_id')
+        student_id = data.get('student_id')
+        action = data.get('action')  # 'enable' or 'disable'
+        
+        exam = get_object_or_404(Exam, id=exam_id, created_by=request.user)
+        student = get_object_or_404(User, id=student_id, role='Student')
+        
+        if action not in ['enable', 'disable']:
+            return JsonResponse({'error': 'Invalid action'}, status=400)
+        
+        assignment, created = ExamAssignment.objects.get_or_create(
+            exam=exam,
+            student=student,
+            defaults={
+                'assigned_by': request.user,
+                'is_active': action == 'enable'
+            }
+        )
+        
+        if not created:
+            assignment.is_active = action == 'enable'
+            assignment.save()
+        
+        # If enabling reappear, also reset attempt
+        if action == 'enable':
+            # Clear previous submission
+            Submission.objects.filter(exam=exam, student=student).delete()
+            
+            # Reset violations
+            Violation.objects.filter(exam=exam, student=student).update(is_frozen=False)
+            
+            # Update attempt
+            attempt, _ = ExamAttempt.objects.get_or_create(
+                exam=exam,
+                student=student,
+                defaults={
+                    'is_active': True,
+                    'can_reattempt': True,
+                    'reset_by': request.user,
+                    'reset_at': timezone.now()
+                }
+            )
+            if not _:
+                attempt.is_active = True
+                attempt.can_reattempt = True
+                attempt.reset_by = request.user
+                attempt.reset_at = timezone.now()
+                attempt.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'{"Enabled" if action == "enable" else "Disabled"} reappear for {student.get_full_name() or student.username}',
+            'assignment_id': assignment.id,
+            'is_active': assignment.is_active
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

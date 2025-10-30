@@ -36,6 +36,9 @@ urlpatterns = [
     path('faculty/violations/<int:exam_id>/<int:student_id>/', faculty_monitoring_views.student_violations_detail, name='student_violations_detail'),
     path('faculty/analytics/', faculty_monitoring_views.student_analytics, name='student_analytics'),
     path('faculty/analytics/exam/<int:exam_id>/', faculty_monitoring_views.exam_analytics, name='exam_analytics'),
+    path('faculty/exam-status/<int:exam_id>/', faculty_monitoring_views.get_exam_status_updates, name='get_exam_status_updates'),
+    path('faculty/update-assignment/', faculty_monitoring_views.update_exam_assignment, name='update_exam_assignment'),
+    
     path('student/exams/', views.student_exams, name='student_exams'),
     path('student/profile/', views.student_profile, name='student_profile'),
     path('student/password/', views.student_password_change, name='student_password_change'),
