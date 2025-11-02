@@ -134,6 +134,14 @@
             </div>
 
             <div class="panel">
+                <h3><i class="fas fa-chart-bar me-2"></i>My Results</h3>
+                <p>View your exam scores and grades</p>
+                <a href="{% url 'student_results' %}" class="btn-link">
+                    <button>View Results</button>
+                </a>
+            </div>
+
+            <div class="panel">
                 <h3><i class="fas fa-user-circle me-2"></i>My Profile</h3>
                 <p>Update your personal information</p>
                 <a href="{% url 'student_profile' %}" class="btn-link">
@@ -148,6 +156,55 @@
                     <button>Report Bug</button>
                 </a>
             </div>
+        </div>
+        
+        <!-- Recent Results Section -->
+        <div class="section">
+            <h3 class="section-title"><i class="fas fa-trophy me-2"></i>Recent Exam Results</h3>
+            {% if submissions %}
+            <div style="overflow-x: auto;">
+                <table class="table table-hover" style="background: white; border-radius: 10px; overflow: hidden;">
+                    <thead style="background: linear-gradient(90deg, #2d3e50 60%, #4f8cff 100%); color: white;">
+                        <tr>
+                            <th>Exam</th>
+                            <th>Score</th>
+                            <th>Grade</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for submission in submissions|slice:":5" %}
+                        <tr>
+                            <td><strong>{{ submission.exam.title }}</strong></td>
+                            <td><span style="font-weight: 600; color: #2d3e50;">{{ submission.score|floatformat:1 }}%</span></td>
+                            <td>
+                                <span class="badge" style="
+                                    {% if submission.grade == 'O' %}background: #c7d2fe; color: #3730a3;
+                                    {% elif submission.grade == 'A' %}background: #d1fae5; color: #065f46;
+                                    {% elif submission.grade == 'B' %}background: #dbeafe; color: #1e40af;
+                                    {% elif submission.grade == 'C' %}background: #fef3c7; color: #92400e;
+                                    {% else %}background: #fee2e2; color: #991b1b;
+                                    {% endif %}
+                                    padding: 0.4rem 0.8rem; border-radius: 20px; font-weight: 600;">
+                                    {{ submission.grade }}
+                                </span>
+                            </td>
+                            <td>{{ submission.submitted_on|date:"M d, Y" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div style="text-align: center; margin-top: 1.5rem;">
+                    <a href="{% url 'student_results' %}" style="color: #4f8cff; text-decoration: none; font-weight: 600;">
+                        View All Results <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+            {% else %}
+            <div class="custom-alert-warning">
+                <i class="fas fa-info-circle me-2"></i>No exam results yet. Complete an exam to see your results here.
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

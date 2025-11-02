@@ -17,8 +17,8 @@ class DistractionDetector:
         # Initialize state variables
         self.warning_count = 0
         self.warning_limit = 3  # Default warning limit
-        self.absence_threshold = 3  # Balanced: 3 seconds
-        self.distraction_threshold = 5  # Balanced: 5 seconds
+        self.absence_threshold = 8  # More lenient: 8 seconds
+        self.distraction_threshold = 10  # More lenient: 10 seconds
         
         # Tracking times
         self.last_face_detected_time = None
@@ -26,6 +26,8 @@ class DistractionDetector:
         self.last_focused_time = None
         self.calibration_frames = 0
         self.calibration_complete = False
+        self.system_ready = False  # NEW: Track if system is fully initialized
+        self.initialization_start_time = None  # NEW: Track initialization start
         
         # Movement tracking - NEW
         self.prev_nose_pos = None
@@ -38,7 +40,7 @@ class DistractionDetector:
         self.freeze_start_time = None
         self.freeze_duration = 300  # 5 minutes
         self.last_warning_time = None
-        self.warning_cooldown = 5  # STRICTER: 5 seconds between warnings
+        self.warning_cooldown = 10  # More lenient: 10 seconds between warnings
         
         # Face landmarks for detection
         self.LEFT_IRIS = [474, 475, 476, 477]
@@ -46,20 +48,20 @@ class DistractionDetector:
         self.NOSE_TIP = 1
         self.CHIN = 152
         
-        # BALANCED thresholds - 50% sensitivity
-        self.GAZE_THRESHOLD = 30  # Balanced: 30 pixels
-        self.HEAD_MOVEMENT_THRESHOLD = 60  # Balanced: 60 pixels
-        self.VERTICAL_GAZE_THRESHOLD = 25  # Balanced: 25 pixels
-        self.MOVEMENT_THRESHOLD = 20  # Balanced: 20 pixels
-        self.EXCESSIVE_MOVEMENT_THRESHOLD = 35  # Balanced: 35 pixels
+        # LENIENT thresholds - Less sensitive for better user experience
+        self.GAZE_THRESHOLD = 60  # More lenient: 60 pixels (was 30)
+        self.HEAD_MOVEMENT_THRESHOLD = 100  # More lenient: 100 pixels (was 60)
+        self.VERTICAL_GAZE_THRESHOLD = 50  # More lenient: 50 pixels (was 25)
+        self.MOVEMENT_THRESHOLD = 40  # More lenient: 40 pixels (was 20)
+        self.EXCESSIVE_MOVEMENT_THRESHOLD = 70  # More lenient: 70 pixels (was 35)
         
         # Calibration data
         self.baseline_nose_x = None
         self.baseline_iris_x = None
         
-        # Multiple face detection - STRICTER
+        # Multiple face detection - More lenient
         self.multiple_face_start_time = None
-        self.multiple_face_threshold = 3  # STRICTER: 3 seconds (was 5)
+        self.multiple_face_threshold = 5  # More lenient: 5 seconds
 
     def set_warning_threshold(self, limit):
         """Set the maximum number of warnings before freezing the exam"""
@@ -68,6 +70,10 @@ class DistractionDetector:
     def set_absence_threshold(self, seconds):
         """Set the time threshold for face absence before issuing a warning"""
         self.absence_threshold = seconds
+
+    def set_distraction_threshold(self, seconds):
+        """Set the time threshold for distraction before issuing a warning"""
+        self.distraction_threshold = seconds
 
     def detect_distraction(self, frame):
         """Process a frame and detect distractions with improved accuracy"""
@@ -124,18 +130,27 @@ class DistractionDetector:
         else:
             self.multiple_face_start_time = None
 
-        # Check for face absence - IMMEDIATE FEEDBACK
+        # Check for face absence - DELAYED FEEDBACK (more lenient)
         if not results.multi_face_landmarks:
+            # During initialization/calibration, be very lenient
+            if not self.system_ready:
+                response['warning_message'] = '🔄 Initializing camera... Please look at the screen'
+                return response
+            
             if self.last_face_detected_time is None:
                 self.last_face_detected_time = current_time
-                # Show warning immediately
-                response['warning_message'] = 'Face not detected'
+                # Show gentle reminder instead of immediate warning
+                response['warning_message'] = '📸 Adjusting camera...'
             else:
                 time_without_face = (current_time - self.last_face_detected_time).total_seconds()
-                # Show continuous warning message
-                response['warning_message'] = f'⚠️ NO FACE DETECTED - {int(time_without_face)}s'
                 
-                # Issue warning after threshold
+                # Only show warning after a few seconds (more lenient)
+                if time_without_face >= 4:
+                    response['warning_message'] = f'⚠️ Please ensure your face is visible ({int(time_without_face)}s)'
+                else:
+                    response['warning_message'] = '📸 Adjusting camera...'
+                
+                # Issue warning after threshold (now 8 seconds)
                 if time_without_face >= self.absence_threshold:
                     self._handle_warning('Face Missing')
                     # Don't reset timer - keep accumulating to show continuous absence
@@ -150,8 +165,11 @@ class DistractionDetector:
         mesh_coords = [(int(point.x * frame_width), int(point.y * frame_height))
                       for point in face_landmarks.landmark]
 
-        # Calibration phase (first 20 frames for faster detection)
-        if self.calibration_frames < 20:
+        # Calibration phase (extended for better accuracy and user experience)
+        if self.calibration_frames < 60:  # Extended to 60 frames (~2 seconds)
+            if self.initialization_start_time is None:
+                self.initialization_start_time = current_time
+            
             nose_x = mesh_coords[self.NOSE_TIP][0]
             left_iris = np.array([mesh_coords[idx] for idx in self.LEFT_IRIS])
             (l_cx, _), _ = cv2.minEnclosingCircle(left_iris)
@@ -165,9 +183,16 @@ class DistractionDetector:
                 self.baseline_iris_x = (self.baseline_iris_x + l_cx) / 2
             
             self.calibration_frames += 1
-            if self.calibration_frames == 20:
+            
+            # Show user-friendly calibration message
+            progress = int((self.calibration_frames / 60) * 100)
+            response['warning_message'] = f'🔄 Calibrating monitoring system... {progress}% complete'
+            
+            if self.calibration_frames == 60:
                 self.calibration_complete = True
-                response['warning_message'] = 'Calibration complete - monitoring active'
+                self.system_ready = True
+                response['warning_message'] = '✅ Monitoring system ready'
+            
             return response
 
         # Extract iris positions
@@ -222,7 +247,7 @@ class DistractionDetector:
         self.prev_nose_pos = (nose_x, nose_y)
         self.prev_iris_pos = (avg_iris_x, avg_iris_y)
 
-        # Detect distractions with AGGRESSIVE logic
+        # Detect distractions with LENIENT logic (less sensitive)
         is_distracted = False
         distraction_reason = ''
         

@@ -1,0 +1,586 @@
+{% extends 'student_base.html' %}
+
+{% block title %}Notifications - Proctoring System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notifications-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+    }
+    
+    .page-header h1 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+    }
+    
+    .page-header p {
+        margin: 0.5rem 0 0 0;
+        opacity: 0.9;
+    }
+    
+    .notification-section {
+        margin-bottom: 2rem;
+    }
+    
+    .section-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .notification-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        border-left: 5px solid;
+        transition: all 0.3s ease;
+    }
+    
+    .notification-card:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    }
+    
+    .notification-card.read {
+        opacity: 0.7;
+        background: linear-gradient(to right, #f8fafc 0%, white 10%);
+    }
+    
+    .mark-read-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: #e0e7ff;
+        border: none;
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        color: #667eea;
+    }
+    
+    .mark-read-btn:hover {
+        background: #667eea;
+        color: white;
+        transform: scale(1.1);
+    }
+    
+    .mark-read-btn.read {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    
+    .read-indicator {
+        display: inline-block;
+        background: #d1fae5;
+        color: #065f46;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-left: 0.5rem;
+    }
+    
+    .notification-urgent {
+        border-left-color: #ef4444;
+        background: linear-gradient(to right, #fee2e2 0%, white 10%);
+        animation: pulse-urgent 2s infinite;
+    }
+    
+    @keyframes pulse-urgent {
+        0%, 100% { box-shadow: 0 2px 10px rgba(239, 68, 68, 0.3); }
+        50% { box-shadow: 0 4px 20px rgba(239, 68, 68, 0.5); }
+    }
+    
+    .notification-warning {
+        border-left-color: #f59e0b;
+        background: linear-gradient(to right, #fef3c7 0%, white 10%);
+    }
+    
+    .notification-info {
+        border-left-color: #3b82f6;
+        background: linear-gradient(to right, #dbeafe 0%, white 10%);
+    }
+    
+    .notification-missed {
+        border-left-color: #dc2626;
+        background: linear-gradient(to right, #fecaca 0%, white 10%);
+        opacity: 0.8;
+    }
+    
+    .notification-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.75rem;
+    }
+    
+    .notification-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0;
+    }
+    
+    .notification-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .badge-urgent {
+        background: #ef4444;
+        color: white;
+        animation: blink 1s infinite;
+    }
+    
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+    
+    .badge-warning {
+        background: #f59e0b;
+        color: white;
+    }
+    
+    .badge-info {
+        background: #3b82f6;
+        color: white;
+    }
+    
+    .badge-missed {
+        background: #dc2626;
+        color: white;
+    }
+    
+    .notification-content {
+        color: #475569;
+        line-height: 1.6;
+        margin-bottom: 0.75rem;
+    }
+    
+    .notification-details {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        font-size: 0.9rem;
+        color: #64748b;
+    }
+    
+    .detail-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .detail-item i {
+        color: #94a3b8;
+    }
+    
+    .notification-actions {
+        margin-top: 1rem;
+        display: flex;
+        gap: 1rem;
+    }
+    
+    .action-btn {
+        padding: 0.5rem 1.25rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+    
+    .btn-secondary {
+        background: #f1f5f9;
+        color: #475569;
+    }
+    
+    .btn-secondary:hover {
+        background: #e2e8f0;
+        color: #1e293b;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #94a3b8;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+    
+    .timer-display {
+        font-weight: 700;
+        color: #ef4444;
+        font-size: 1.1rem;
+    }
+    
+    @media (max-width: 768px) {
+        .notification-header {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .notification-details {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .notification-actions {
+            flex-direction: column;
+        }
+        
+        .action-btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="notifications-container">
+    <div class="page-header">
+        <h1><i class="fas fa-bell me-2"></i>Exam Notifications</h1>
+        <p>Stay updated with your upcoming and ongoing exams</p>
+    </div>
+    
+    <!-- URGENT: Exams starting in 5 minutes -->
+    {% if urgent_exams %}
+    <div class="notification-section">
+        <div class="section-title">
+            <i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i>
+            Urgent - Starting Very Soon!
+        </div>
+        {% for exam in urgent_exams %}
+        <div class="notification-card notification-urgent {% if exam.is_read %}read{% endif %}" id="notification-{{ exam.id }}">
+            <button class="mark-read-btn {% if exam.is_read %}read{% endif %}" 
+                    onclick="markAsRead({{ exam.id }})" 
+                    title="{% if exam.is_read %}Marked as read{% else %}Mark as read{% endif %}">
+                <i class="fas {% if exam.is_read %}fa-check{% else %}fa-check-circle{% endif %}"></i>
+            </button>
+            <div class="notification-header">
+                <h3 class="notification-title">
+                    {{ exam.title }}
+                    {% if exam.is_read %}<span class="read-indicator">Read</span>{% endif %}
+                </h3>
+                <span class="notification-badge badge-urgent">
+                    <i class="fas fa-bolt"></i> {{ exam.time_until }}
+                </span>
+            </div>
+            <div class="notification-content">
+                <p class="timer-display">⏰ Starts in {{ exam.time_until }}!</p>
+                <p>{{ exam.description }}</p>
+            </div>
+            <div class="notification-details">
+                <div class="detail-item">
+                    <i class="fas fa-calendar"></i>
+                    <span>{{ exam.date|date:"M d, Y" }}</span>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-clock"></i>
+                    <span>{{ exam.date|date:"h:i A" }}</span>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-hourglass-half"></i>
+                    <span>{{ exam.duration_minutes }} minutes</span>
+                </div>
+            </div>
+            <div class="notification-actions">
+                <a href="{% url 'exam_instructions' exam.id %}" class="action-btn btn-primary">
+                    <i class="fas fa-play"></i> Start Exam Now
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- WARNING: Exams starting in 10 minutes -->
+    {% if warning_10min_exams %}
+    <div class="notification-section">
+        <div class="section-title">
+            <i class="fas fa-clock" style="color: #f59e0b;"></i>
+            Starting in 10 Minutes
+        </div>
+        {% for exam in warning_10min_exams %}
+        <div class="notification-card notification-warning {% if exam.is_read %}read{% endif %}" id="notification-{{ exam.id }}">
+            <button class="mark-read-btn {% if exam.is_read %}read{% endif %}" 
+                    onclick="markAsRead({{ exam.id }})" 
+                    title="{% if exam.is_read %}Marked as read{% else %}Mark as read{% endif %}">
+                <i class="fas {% if exam.is_read %}fa-check{% else %}fa-check-circle{% endif %}"></i>
+            </button>
+            <div class="notification-header">
+                <h3 class="notification-title">
+                    {{ exam.title }}
+                    {% if exam.is_read %}<span class="read-indicator">Read</span>{% endif %}
+                </h3>
+                <span class="notification-badge badge-warning">
+                    <i class="fas fa-clock"></i> {{ exam.time_until }}
+                </span>
+            </div>
+            <div class="notification-content">
+                <p>{{ exam.description }}</p>
+            </div>
+            <div class="notification-details">
+                <div class="detail-item">
+                    <i class="fas fa-calendar"></i>
+                    <span>{{ exam.date|date:"M d, Y" }}</span>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-clock"></i>
+                    <span>{{ exam.date|date:"h:i A" }}</span>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-hourglass-half"></i>
+                    <span>{{ exam.duration_minutes }} minutes</span>
+                </div>
+            </div>
+            <div class="notification-actions">
+                <a href="{% url 'exam_instructions' exam.id %}" class="action-btn btn-primary">
+                    <i class="fas fa-info-circle"></i> View Instructions
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- INFO: Exams starting in 30 minutes -->
+    {% if warning_30min_exams %}
+    <div class="notification-section">
+        <div class="section-title">
+            <i class="fas fa-bell" style="color: #3b82f6;"></i>
+            Starting in 30 Minutes
+        </div>
+        {% for exam in warning_30min_exams %}
+        <div class="notification-card notification-info {% if exam.is_read %}read{% endif %}" id="notification-{{ exam.id }}">
+            <button class="mark-read-btn {% if exam.is_read %}read{% endif %}" 
+                    onclick="markAsRead({{ exam.id }})" 
+                    title="{% if exam.is_read %}Marked as read{% else %}Mark as read{% endif %}">
+                <i class="fas {% if exam.is_read %}fa-check{% else %}fa-check-circle{% endif %}"></i>
+            </button>
+            <div class="notification-header">
+                <h3 class="notification-title">
+                    {{ exam.title }}
+                    {% if exam.is_read %}<span class="read-indicator">Read</span>{% endif %}
+                </h3>
+                <span class="notification-badge badge-info">
+                    <i class="fas fa-bell"></i> {{ exam.time_until }}
+                </span>
+            </div>
+            <div class="notification-content">
+                <p>{{ exam.description }}</p>
+            </div>
+            <div class="notification-details">
+                <div class="detail-item">
+                    <i class="fas fa-calendar"></i>
+                    <span>{{ exam.date|date:"M d, Y" }}</span>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-clock"></i>
+                    <span>{{ exam.date|date:"h:i A" }}</span>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-hourglass-half"></i>
+                    <span>{{ exam.duration_minutes }} minutes</span>
+                </div>
+            </div>
+            <div class="notification-actions">
+                <a href="{% url 'exam_instructions' exam.id %}" class="action-btn btn-secondary">
+                    <i class="fas fa-info-circle"></i> View Details
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- Upcoming Exams (beyond 30 minutes) -->
+    {% if upcoming_exams %}
+    <div class="notification-section">
+        <div class="section-title">
+            <i class="fas fa-calendar-alt" style="color: #3b82f6;"></i>
+            Upcoming Exams
+        </div>
+        {% for exam in upcoming_exams %}
+        <div class="notification-card notification-info {% if exam.is_read %}read{% endif %}" id="notification-{{ exam.id }}">
+            <button class="mark-read-btn {% if exam.is_read %}read{% endif %}" 
+                    onclick="markAsRead({{ exam.id }})" 
+                    title="{% if exam.is_read %}Marked as read{% else %}Mark as read{% endif %}">
+                <i class="fas {% if exam.is_read %}fa-check{% else %}fa-check-circle{% endif %}"></i>
+            </button>
+            <div class="notification-header">
+                <h3 class="notification-title">
+                    {{ exam.title }}
+                    {% if exam.is_read %}<span class="read-indicator">Read</span>{% endif %}
+                </h3>
+                <span class="notification-badge badge-info">
+                    <i class="fas fa-calendar"></i> {{ exam.time_until }}
+                </span>
+            </div>
+            <div class="notification-content">
+                <p>{{ exam.description }}</p>
+            </div>
+            <div class="notification-details">
+                <div class="detail-item">
+                    <i class="fas fa-calendar"></i>
+                    <span>{{ exam.date|date:"M d, Y" }}</span>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-clock"></i>
+                    <span>{{ exam.date|date:"h:i A" }}</span>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-hourglass-half"></i>
+                    <span>{{ exam.duration_minutes }} minutes</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- Missed Exams -->
+    {% if missed_exams %}
+    <div class="notification-section">
+        <div class="section-title">
+            <i class="fas fa-times-circle" style="color: #dc2626;"></i>
+            Missed Exams
+        </div>
+        {% for exam in missed_exams %}
+        <div class="notification-card notification-missed">
+            <div class="notification-header">
+                <h3 class="notification-title">{{ exam.title }}</h3>
+                <span class="notification-badge badge-missed">
+                    <i class="fas fa-times"></i> Missed
+                </span>
+            </div>
+            <div class="notification-content">
+                <p>This exam ended on {{ exam.end_time|date:"M d, Y h:i A" }}</p>
+            </div>
+            <div class="notification-details">
+                <div class="detail-item">
+                    <i class="fas fa-calendar"></i>
+                    <span>{{ exam.date|date:"M d, Y" }}</span>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-clock"></i>
+                    <span>{{ exam.date|date:"h:i A" }}</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- Empty State -->
+    {% if not urgent_exams and not warning_10min_exams and not warning_30min_exams and not upcoming_exams and not missed_exams %}
+    <div class="empty-state">
+        <i class="fas fa-bell-slash"></i>
+        <h3>No Notifications</h3>
+        <p>You're all caught up! No exams scheduled at the moment.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function markAsRead(examId) {
+    fetch(`/student/notifications/mark-read/${examId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const card = document.getElementById(`notification-${examId}`);
+            const btn = card.querySelector('.mark-read-btn');
+            const title = card.querySelector('.notification-title');
+            
+            // Add read class
+            card.classList.add('read');
+            btn.classList.add('read');
+            btn.title = 'Marked as read';
+            
+            // Change icon
+            btn.querySelector('i').className = 'fas fa-check';
+            
+            // Add read indicator if not already present
+            if (!title.querySelector('.read-indicator')) {
+                const indicator = document.createElement('span');
+                indicator.className = 'read-indicator';
+                indicator.textContent = 'Read';
+                title.appendChild(indicator);
+            }
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

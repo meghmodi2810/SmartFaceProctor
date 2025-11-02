@@ -3,6 +3,8 @@ from . import views
 from . import admin_views
 from . import session_admin_views
 from . import faculty_monitoring_views
+from . import views_student_results
+from . import views_notifications
 
 urlpatterns = [
     path('', views.home, name='home'),  # Make home the default landing page
@@ -21,6 +23,8 @@ urlpatterns = [
     path('dashboard/faculty/', views.faculty_dashboard, name='faculty_dashboard'),
     path('dashboard/faculty/exams/', views.faculty_exams, name='faculty_exams'),
     path('dashboard/faculty/schedule/', views.schedule_exam_page, name='schedule_exam_page'),
+    path('dashboard/faculty/schedule/guide/', views.exam_scheduling_guide, name='exam_scheduling_guide'),
+    path('dashboard/faculty/download-template/', views.download_template, name='download_template'),
     path('dashboard/faculty/preview/', views.schedule_exam_preview, name='schedule_exam_preview'),
     path('dashboard/faculty/profile/', views.faculty_profile, name='faculty_profile'),
     path('dashboard/faculty/password/', views.faculty_password_change, name='faculty_password_change'),
@@ -33,7 +37,6 @@ urlpatterns = [
     path('faculty/live-monitoring/', faculty_monitoring_views.faculty_live_monitoring, name='faculty_live_monitoring'),
     path('faculty/cancel-freeze/', faculty_monitoring_views.cancel_freeze, name='cancel_freeze'),
     path('faculty/reset-attempt/', faculty_monitoring_views.reset_exam_attempt, name='reset_exam_attempt'),
-    path('faculty/end-exam/', faculty_monitoring_views.end_exam, name='end_exam'),
     path('faculty/violations/<int:exam_id>/<int:student_id>/', faculty_monitoring_views.student_violations_detail, name='student_violations_detail'),
     path('faculty/analytics/', faculty_monitoring_views.student_analytics, name='student_analytics'),
     path('faculty/analytics/exam/<int:exam_id>/', faculty_monitoring_views.exam_analytics, name='exam_analytics'),
@@ -41,6 +44,9 @@ urlpatterns = [
     path('faculty/update-assignment/', faculty_monitoring_views.update_exam_assignment, name='update_exam_assignment'),
     
     path('student/exams/', views.student_exams, name='student_exams'),
+    path('student/results/', views_student_results.student_results, name='student_results'),
+    path('student/notifications/', views_notifications.student_notifications, name='student_notifications'),
+    path('student/notifications/mark-read/<int:exam_id>/', views_notifications.mark_notification_read, name='mark_notification_read'),
     path('student/profile/', views.student_profile, name='student_profile'),
     path('student/password/', views.student_password_change, name='student_password_change'),
     path('student/profile/update/', views.student_profile_update, name='student_profile_update'),
@@ -48,16 +54,11 @@ urlpatterns = [
     path('student/mcq-exam/<int:exam_id>/', views.mcq_exam, name='mcq_exam'),
     path('student/start-mcq-exam/<int:exam_id>/', views.start_mcq_exam, name='start_mcq_exam'),
     path('student/submit-exam/<int:exam_id>/', views.submit_exam, name='submit_exam'),
-    path('student/save-progress/', views.save_progress, name='save_progress'),
     path('student/exam-instructions/<int:exam_id>/', views.exam_instructions, name='exam_instructions'),
     path('student/exam-results/<int:exam_id>/', views.exam_results, name='exam_results'),
     path('student/exam-review/<int:exam_id>/', views.exam_review, name='exam_review'),
-    path('exam-feedback/<int:exam_id>/', views.exam_feedback, name='exam_feedback'),
-    path('submit-feedback/<int:exam_id>/', views.submit_feedback, name='submit_feedback'),
     path('report-bug/', views.report_bug, name='report_bug'),
     path('schedule_exam/', views.schedule_exam, name='schedule_exam'),
-    path('exam-scheduling-guide/', views.exam_scheduling_guide, name='exam_scheduling_guide'),
-    path('download-template/', views.download_template, name='download_template'),
     path('delete_exam/<int:exam_id>/', views.delete_exam, name='delete_exam'),
     path('faculty/edit_exam/<int:exam_id>/', views.edit_exam, name='edit_exam'),
     path('check_exam_status/<int:exam_id>/', views.check_exam_status, name='check_exam_status'),

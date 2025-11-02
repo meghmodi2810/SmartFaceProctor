@@ -1,6 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST
 from django.http import JsonResponse
 from django.utils import timezone
 from django.db.models import Count, Q, Avg, F
@@ -149,9 +148,11 @@ def cancel_freeze(request):
 
 
 @login_required
-@require_POST
 def reset_exam_attempt(request):
     """Allow faculty to reset a student's exam attempt for reappearing"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Invalid method'}, status=405)
+    
     if request.user.role != 'Faculty':
         return JsonResponse({'error': 'Unauthorized'}, status=403)
     
@@ -208,93 +209,6 @@ def reset_exam_attempt(request):
         })
         
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
-
-@login_required
-@require_POST
-def end_exam(request):
-    """Manually end exam for all students and create submissions for attempted MCQs"""
-    if request.user.role != 'Faculty':
-        return JsonResponse({'error': 'Unauthorized'}, status=403)
-    
-    try:
-        data = json.loads(request.body)
-        exam_id = data.get('exam_id')
-        
-        exam = get_object_or_404(Exam, id=exam_id, created_by=request.user)
-        
-        # Get all active attempts for this exam
-        from .models import Question
-        try:
-            from .models import ExamProgress
-            has_exam_progress = True
-        except ImportError:
-            has_exam_progress = False
-        
-        active_attempts = ExamAttempt.objects.filter(exam=exam, is_active=True)
-        
-        submissions_created = 0
-        for attempt in active_attempts:
-            student = attempt.student
-            
-            # Check if student already submitted
-            existing_submission = Submission.objects.filter(exam=exam, student=student).first()
-            if existing_submission:
-                continue
-            
-            # Try to get saved progress
-            score = 0
-            if has_exam_progress:
-                try:
-                    from .models import ExamProgress
-                    progress = ExamProgress.objects.get(exam=exam, student=student)
-                    answers = progress.answers
-                    
-                    # Calculate score from saved answers
-                    questions = Question.objects.filter(exam=exam)
-                    correct_count = 0
-                    total_questions = questions.count()
-                    
-                    for question in questions:
-                        student_answer = answers.get(str(question.id), '')
-                        if student_answer == question.answer:
-                            correct_count += 1
-                    
-                    score = (correct_count / total_questions * 100) if total_questions > 0 else 0
-                except Exception:
-                    # No saved progress or table doesn't exist, score remains 0
-                    score = 0
-            else:
-                # ExamProgress model doesn't exist
-                score = 0
-            
-            # Create submission with calculated score
-            Submission.objects.create(
-                exam=exam,
-                student=student,
-                score=score
-            )
-            
-            # Mark attempt as completed
-            attempt.is_active = False
-            attempt.ended_at = timezone.now()
-            attempt.save()
-            
-            submissions_created += 1
-        
-        # Mark exam as ended by updating its duration to make it past
-        # Or add a flag to indicate manual end
-        
-        return JsonResponse({
-            'success': True,
-            'submissions_created': submissions_created,
-            'message': f'Exam ended. {submissions_created} submissions created.'
-        })
-        
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
 
 

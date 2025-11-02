@@ -63,6 +63,90 @@
             background: rgba(255,255,255,.15);
             color: #ffd700;
         }
+        .notification-badge {
+            position: relative;
+            display: inline-block;
+        }
+        .notification-badge .badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-toggle {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 0.3rem 0.8rem;
+            border-radius: 5px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .dropdown-toggle:hover {
+            background: rgba(255,255,255,.08);
+            color: #ffd700;
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            margin-top: 0.5rem;
+            background: white;
+            min-width: 200px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 1000;
+            overflow: hidden;
+        }
+        .dropdown-menu.show {
+            display: block;
+            animation: fadeIn 0.2s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .dropdown-item {
+            display: block;
+            padding: 0.75rem 1.25rem;
+            color: #2d3e50;
+            text-decoration: none;
+            transition: all 0.2s;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+        .dropdown-item:hover {
+            background: #f8fafc;
+            color: #4f8cff;
+            padding-left: 1.5rem;
+        }
+        .dropdown-item i {
+            margin-right: 0.75rem;
+            width: 20px;
+            text-align: center;
+        }
         .main {
             flex: 1;
             padding: 2rem;
@@ -154,9 +238,30 @@
             <li><a href="{% url 'student_dashboard' %}" class="{% if request.resolver_match.url_name == 'student_dashboard' %}active{% endif %}">
                 <i class="fas fa-home me-1"></i>Dashboard
             </a></li>
-            <li><a href="{% url 'logout' %}">
-                <i class="fas fa-sign-out-alt me-1"></i>Logout
+            <li><a href="{% url 'student_notifications' %}" class="{% if request.resolver_match.url_name == 'student_notifications' %}active{% endif %}">
+                <span class="notification-badge">
+                    <i class="fas fa-bell me-1"></i>Notifications
+                    {% if upcoming_exams_count > 0 %}
+                    <span class="badge">{{ upcoming_exams_count }}</span>
+                    {% endif %}
+                </span>
             </a></li>
+            <li class="dropdown">
+                <button class="dropdown-toggle" onclick="toggleDropdown()">
+                    <i class="fas fa-cog me-1"></i>Settings <i class="fas fa-chevron-down ms-1"></i>
+                </button>
+                <div class="dropdown-menu" id="settingsDropdown">
+                    <a href="{% url 'student_profile' %}" class="dropdown-item">
+                        <i class="fas fa-user-circle"></i>My Profile
+                    </a>
+                    <a href="{% url 'report_bug' %}" class="dropdown-item">
+                        <i class="fas fa-bug"></i>Report Issue
+                    </a>
+                    <a href="{% url 'logout' %}" class="dropdown-item">
+                        <i class="fas fa-sign-out-alt"></i>Logout
+                    </a>
+                </div>
+            </li>
         </ul>
     </nav>
 
@@ -167,6 +272,25 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function toggleDropdown() {
+            const dropdown = document.getElementById('settingsDropdown');
+            dropdown.classList.toggle('show');
+        }
+        
+        // Close dropdown when clicking outside
+        window.onclick = function(event) {
+            if (!event.target.matches('.dropdown-toggle') && !event.target.closest('.dropdown-toggle')) {
+                const dropdowns = document.getElementsByClassName('dropdown-menu');
+                for (let i = 0; i < dropdowns.length; i++) {
+                    const openDropdown = dropdowns[i];
+                    if (openDropdown.classList.contains('show')) {
+                        openDropdown.classList.remove('show');
+                    }
+                }
+            }
+        }
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -1,9 +1,21 @@
-{% extends 'student_base.html' %}
+{% extends 'base_report_bug.html' %}
 
 {% block title %}Report Bug - Proctoring System{% endblock %}
 
 {% block extra_css %}
 <style>
+    :root {
+        {% if user.role == 'Faculty' %}
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --primary-color: #667eea;
+        --shadow-color: rgba(102, 126, 234, 0.4);
+        {% else %}
+        --primary-gradient: linear-gradient(135deg, #2d3e50 0%, #4f8cff 100%);
+        --primary-color: #4f8cff;
+        --shadow-color: rgba(79, 140, 255, 0.4);
+        {% endif %}
+    }
+    
     .report-container {
         max-width: 800px;
         margin: 0 auto;
@@ -19,7 +31,7 @@
     .report-header h1 {
         font-size: 2.5rem;
         margin-bottom: 0.5rem;
-        background: linear-gradient(135deg, #2d3e50 0%, #4f8cff 100%);
+        background: var(--primary-gradient);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -61,7 +73,7 @@
     .form-textarea:focus,
     .form-select:focus {
         outline: none;
-        border-color: #4f8cff;
+        border-color: var(--primary-color);
         background: white;
     }
     
@@ -76,7 +88,7 @@
     }
     
     .submit-btn {
-        background: linear-gradient(135deg, #4f8cff 0%, #2d3e50 100%);
+        background: var(--primary-gradient);
         color: white;
         border: none;
         padding: 0.75rem 2rem;
@@ -89,7 +101,7 @@
     
     .submit-btn:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(79, 140, 255, 0.4);
+        box-shadow: 0 6px 20px var(--shadow-color);
     }
     
     .priority-high {

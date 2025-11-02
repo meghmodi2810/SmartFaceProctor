@@ -520,6 +520,7 @@ def exam_proctoring_page(request):
         detector = DistractionDetector()
         detector.set_warning_threshold(exam.warning_limit)
         detector.set_absence_threshold(exam.absence_threshold)
+        detector.set_distraction_threshold(exam.absence_threshold)  # Use same threshold for distraction
         
         return render(request, 'exam_proctoring.html', {
             'exam': exam,
@@ -751,7 +752,13 @@ def student_dashboard(request):
 	if user.role != 'Student':
 		return redirect('faculty_dashboard')
 	upcoming_exams = Exam.objects.filter(date__gte=timezone.now()).order_by('date')
-	submissions = Submission.objects.filter(student=user)
+	submissions = Submission.objects.filter(student=user).order_by('-submitted_on')
+	
+	# Calculate grades for submissions
+	from .views_student_results import calculate_grade
+	for submission in submissions:
+		submission.grade = calculate_grade(submission.score)
+	
 	violations = Violation.objects.filter(student=user)
 	context = {
 		'student': user,
@@ -2233,6 +2240,7 @@ def process_frame(request):
             detector = DistractionDetector()
             detector.set_warning_threshold(warning_limit)
             detector.set_absence_threshold(absence_threshold)
+            detector.set_distraction_threshold(absence_threshold)  # Use same threshold for distraction
             setattr(request, detector_key, detector)
         else:
             detector = getattr(request, detector_key)
@@ -2340,14 +2348,17 @@ def check_distraction(request):
                 
                 detector.set_warning_threshold(exam.warning_limit)
                 detector.set_absence_threshold(exam.absence_threshold)
+                detector.set_distraction_threshold(exam.absence_threshold)  # Use same threshold for distraction
                 detector_state['warning_limit'] = exam.warning_limit
                 detector_state['absence_threshold'] = exam.absence_threshold
             except Exam.DoesNotExist:
                 detector.set_warning_threshold(warning_limit)
                 detector.set_absence_threshold(absence_threshold)
+                detector.set_distraction_threshold(absence_threshold)  # Use same threshold for distraction
         else:
             detector.set_warning_threshold(warning_limit)
             detector.set_absence_threshold(absence_threshold)
+            detector.set_distraction_threshold(absence_threshold)  # Use same threshold for distraction
         
         # Check if faculty has cancelled freeze for this student
         if exam_id and detector_state.get('is_frozen', False):
@@ -2467,7 +2478,7 @@ def detect_face(frame):
         faces = face_cascade.detectMultiScale(gray, 1.3, 5)
         return len(faces) > 0
 
-@login_required
+@csrf_exempt
 def log_violation(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)

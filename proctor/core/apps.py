@@ -22,3 +22,6 @@ class CoreConfig(AppConfig):
             
         except Exception as e:
             logger.error(f"Error initializing exam monitoring: {e}")
+            
+        # Import signals to ensure they are registered
+        from . import signals

@@ -262,3 +262,17 @@ class PasswordResetOTP(models.Model):
         from django.utils import timezone
         from datetime import timedelta
         return timezone.now() > self.created_at + timedelta(minutes=15)
+
+
+class NotificationRead(models.Model):
+    """Track which exam notifications students have marked as read"""
+    student = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'role': 'Student'})
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
+    marked_read_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ('student', 'exam')
+        ordering = ['-marked_read_at']
+    
+    def __str__(self):
+        return f"{self.student.username} marked {self.exam.title} as read"

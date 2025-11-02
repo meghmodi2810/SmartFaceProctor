@@ -1,0 +1,249 @@
+{% extends 'student_base.html' %}
+
+{% block title %}My Results - Proctoring System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .results-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+    }
+    
+    .page-header h1 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+    }
+    
+    .page-header p {
+        margin: 0.5rem 0 0 0;
+        opacity: 0.9;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        border-left: 4px solid #667eea;
+    }
+    
+    .stat-card h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 0.9rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .stat-card .value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1e293b;
+    }
+    
+    .results-table {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .table-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+    }
+    
+    .table-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    thead {
+        background: #f8fafc;
+    }
+    
+    th {
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: #475569;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    td {
+        padding: 1rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    tr:hover {
+        background: #f8fafc;
+    }
+    
+    .grade-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+    
+    .grade-o { background: #c7d2fe; color: #3730a3; }
+    .grade-a { background: #d1fae5; color: #065f46; }
+    .grade-b { background: #dbeafe; color: #1e40af; }
+    .grade-c { background: #fef3c7; color: #92400e; }
+    .grade-f { background: #fee2e2; color: #991b1b; }
+    
+    .score-display {
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    
+    .view-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        display: inline-block;
+    }
+    
+    .view-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .no-results {
+        text-align: center;
+        padding: 3rem;
+        color: #64748b;
+    }
+    
+    .no-results i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+    
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        table {
+            font-size: 0.875rem;
+        }
+        
+        th, td {
+            padding: 0.75rem 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="results-container">
+    <div class="page-header">
+        <h1><i class="fas fa-chart-line me-2"></i>My Exam Results</h1>
+        <p>View your performance and grades across all completed exams</p>
+    </div>
+    
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>Total Exams</h3>
+            <div class="value">{{ total_exams }}</div>
+        </div>
+        <div class="stat-card">
+            <h3>Average Score</h3>
+            <div class="value">{{ average_score|floatformat:1 }}%</div>
+        </div>
+        <div class="stat-card">
+            <h3>Highest Score</h3>
+            <div class="value">{{ highest_score|floatformat:1 }}%</div>
+        </div>
+        <div class="stat-card">
+            <h3>Average Grade</h3>
+            <div class="value">{{ average_grade }}</div>
+        </div>
+    </div>
+    
+    <div class="results-table">
+        <div class="table-header">
+            <h2><i class="fas fa-list-alt me-2"></i>Exam History</h2>
+        </div>
+        
+        {% if submissions %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Exam Title</th>
+                    <th>Date</th>
+                    <th>Score</th>
+                    <th>Grade</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for submission in submissions %}
+                <tr>
+                    <td>
+                        <strong>{{ submission.exam.title }}</strong>
+                    </td>
+                    <td>{{ submission.submitted_on|date:"M d, Y H:i" }}</td>
+                    <td>
+                        <span class="score-display">{{ submission.score|floatformat:1 }}%</span>
+                    </td>
+                    <td>
+                        <span class="grade-badge grade-{{ submission.grade|lower }}">
+                            {{ submission.grade }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{% url 'exam_review' submission.exam.id %}" class="view-btn">
+                            <i class="fas fa-eye me-1"></i>View Details
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="no-results">
+            <i class="fas fa-clipboard-list"></i>
+            <h3>No Results Yet</h3>
+            <p>You haven't completed any exams yet. Check your exams page to get started!</p>
+            <a href="{% url 'student_exams' %}" class="view-btn mt-3">
+                <i class="fas fa-arrow-right me-1"></i>Go to My Exams
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
