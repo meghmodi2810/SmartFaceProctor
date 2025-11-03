@@ -30,6 +30,8 @@ urlpatterns = [
     path('dashboard/faculty/password/', views.faculty_password_change, name='faculty_password_change'),
     path('dashboard/faculty/results/', views.faculty_results, name='faculty_results'),
     path('dashboard/faculty/results/<int:exam_id>/', views.faculty_exam_results, name='faculty_exam_results'),
+    # Alternative URL pattern for exam-results (redirects to results)
+    path('dashboard/faculty/exam-results/<int:exam_id>/', views.faculty_exam_results, name='faculty_exam_results_alt'),
     path('dashboard/faculty/report-card/<int:exam_id>/<int:student_id>/', views.generate_report_card, name='generate_report_card'),
     path('dashboard/faculty/search-exams/', views.search_exams, name='search_exams'),
     
