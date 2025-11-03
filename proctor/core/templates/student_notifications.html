@@ -337,6 +337,9 @@
 
 {% block content %}
 <div class="notifications-container">
+    <!-- Hidden CSRF token for JavaScript -->
+    {% csrf_token %}
+    
     <div class="page-header">
         <div>
             <h1><i class="fas fa-bell me-2"></i>Exam Notifications</h1>
@@ -565,23 +568,28 @@
 </div>
 
 <script>
-// Get CSRF token from cookie
-function getCookie(name) {
+// Get CSRF token from Django template or cookie
+function getCSRFToken() {
+    // First try to get from Django's csrf_token tag
+    const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (csrfInput) {
+        return csrfInput.value;
+    }
+    
+    // Fallback to cookie
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
         const cookies = document.cookie.split(';');
         for (let i = 0; i < cookies.length; i++) {
             const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            if (cookie.substring(0, 10) === ('csrftoken=')) {
+                cookieValue = decodeURIComponent(cookie.substring(10));
                 break;
             }
         }
     }
     return cookieValue;
 }
-
-const csrftoken = getCookie('csrftoken');
 
 // Update selection UI
 function updateSelectionUI() {
@@ -645,19 +653,33 @@ function bulkAction(action) {
         }
     }
     
+    // Get CSRF token
+    const csrfToken = getCSRFToken();
+    
+    if (!csrfToken) {
+        alert('Security token not found. Please refresh the page.');
+        return;
+    }
+    
     // Send bulk action request
     fetch('/student/notifications/bulk-action/', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': csrftoken
+            'X-CSRFToken': csrfToken
         },
+        credentials: 'same-origin',  // Important for CSRF
         body: JSON.stringify({
             action: action,
             exam_ids: examIds
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             // Show success message
@@ -671,7 +693,7 @@ function bulkAction(action) {
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('An error occurred. Please try again.');
+        alert('An error occurred: ' + error.message);
     });
 }
 </script>

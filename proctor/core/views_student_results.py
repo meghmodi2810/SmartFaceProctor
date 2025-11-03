@@ -13,16 +13,17 @@ def student_results(request):
     # Get all submissions for this student
     submissions = Submission.objects.filter(student=user).select_related('exam').order_by('-submitted_on')
     
-    # Calculate grade for each submission
+    # Calculate grade for each submission and format score to 2 decimals
     for submission in submissions:
         submission.grade = calculate_grade(submission.score)
+        submission.score = round(submission.score, 2)  # Format to 2 decimal places
     
     # Calculate statistics
     if submissions.exists():
         scores = [s.score for s in submissions]
         total_exams = submissions.count()
-        average_score = sum(scores) / len(scores)
-        highest_score = max(scores)
+        average_score = round(sum(scores) / len(scores), 2)  # 2 decimal places
+        highest_score = round(max(scores), 2)  # 2 decimal places
         
         # Calculate average grade
         grades = [calculate_grade(s.score) for s in submissions]
@@ -41,8 +42,8 @@ def student_results(request):
             average_grade = 'F'
     else:
         total_exams = 0
-        average_score = 0
-        highest_score = 0
+        average_score = 0.00
+        highest_score = 0.00
         average_grade = 'N/A'
     
     context = {

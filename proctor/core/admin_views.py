@@ -785,7 +785,8 @@ def admin_logout(request):
         # Add logout message
         messages.success(request, f'Admin {admin_name} logged out successfully.')
     
-    return redirect('admin_login')
+    # Redirect to normal login page, not admin login
+    return redirect('login')
 
 
 @admin_required

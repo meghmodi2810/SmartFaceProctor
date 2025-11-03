@@ -4,6 +4,7 @@ from . import admin_views
 from . import session_admin_views
 from . import faculty_monitoring_views
 from . import views_notifications
+from . import views_student_results
 
 urlpatterns = [
     path('', views.home, name='home'),  # Make home the default landing page
@@ -43,6 +44,7 @@ urlpatterns = [
     path('faculty/update-assignment/', faculty_monitoring_views.update_exam_assignment, name='update_exam_assignment'),
     
     path('student/exams/', views.student_exams, name='student_exams'),
+    path('student/results/', views_student_results.student_results, name='student_results'),
     path('student/profile/', views.student_profile, name='student_profile'),
     path('student/password/', views.student_password_change, name='student_password_change'),
     path('student/profile/update/', views.student_profile_update, name='student_profile_update'),
@@ -56,6 +58,9 @@ urlpatterns = [
     path('student/exam-instructions/<int:exam_id>/', views.exam_instructions, name='exam_instructions'),
     path('student/exam-results/<int:exam_id>/', views.exam_results, name='exam_results'),
     path('student/exam-review/<int:exam_id>/', views.exam_review, name='exam_review'),
+    # Exam Feedback URLs
+    path('exam-feedback/<int:exam_id>/', views.exam_feedback, name='exam_feedback'),
+    path('submit-feedback/<int:exam_id>/', views.submit_feedback, name='submit_feedback'),
     path('report-bug/', views.report_bug, name='report_bug'),
     path('schedule_exam/', views.schedule_exam, name='schedule_exam'),
     path('delete_exam/<int:exam_id>/', views.delete_exam, name='delete_exam'),

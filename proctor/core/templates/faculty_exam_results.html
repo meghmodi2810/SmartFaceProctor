@@ -226,19 +226,19 @@
         
         <div class="stat-card">
             <div class="stat-icon">📊</div>
-            <div class="stat-value">{{ stats.average_score }}%</div>
+            <div class="stat-value">{{ stats.average_score|floatformat:2 }}%</div>
             <div class="stat-label">Average Score</div>
         </div>
         
         <div class="stat-card">
             <div class="stat-icon">🏆</div>
-            <div class="stat-value">{{ stats.highest_score }}%</div>
+            <div class="stat-value">{{ stats.highest_score|floatformat:2 }}%</div>
             <div class="stat-label">Highest Score</div>
         </div>
         
         <div class="stat-card">
             <div class="stat-icon">📉</div>
-            <div class="stat-value">{{ stats.lowest_score }}%</div>
+            <div class="stat-value">{{ stats.lowest_score|floatformat:2 }}%</div>
             <div class="stat-label">Lowest Score</div>
         </div>
         
@@ -281,13 +281,13 @@
                     <td>{{ submission.student.email }}</td>
                     <td>
                         {% if submission.score >= 80 %}
-                            <span class="score-badge score-excellent">{{ submission.score|floatformat:1 }}%</span>
+                            <span class="score-badge score-excellent">{{ submission.score|floatformat:2 }}%</span>
                         {% elif submission.score >= 60 %}
-                            <span class="score-badge score-good">{{ submission.score|floatformat:1 }}%</span>
+                            <span class="score-badge score-good">{{ submission.score|floatformat:2 }}%</span>
                         {% elif submission.score >= 40 %}
-                            <span class="score-badge score-average">{{ submission.score|floatformat:1 }}%</span>
+                            <span class="score-badge score-average">{{ submission.score|floatformat:2 }}%</span>
                         {% else %}
-                            <span class="score-badge score-poor">{{ submission.score|floatformat:1 }}%</span>
+                            <span class="score-badge score-poor">{{ submission.score|floatformat:2 }}%</span>
                         {% endif %}
                     </td>
                     <td>{{ submission.submitted_on|date:"M d, Y H:i" }}</td>
