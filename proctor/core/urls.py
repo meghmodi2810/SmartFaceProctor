@@ -3,7 +3,6 @@ from . import views
 from . import admin_views
 from . import session_admin_views
 from . import faculty_monitoring_views
-from . import views_student_results
 from . import views_notifications
 
 urlpatterns = [
@@ -44,12 +43,12 @@ urlpatterns = [
     path('faculty/update-assignment/', faculty_monitoring_views.update_exam_assignment, name='update_exam_assignment'),
     
     path('student/exams/', views.student_exams, name='student_exams'),
-    path('student/results/', views_student_results.student_results, name='student_results'),
-    path('student/notifications/', views_notifications.student_notifications, name='student_notifications'),
-    path('student/notifications/mark-read/<int:exam_id>/', views_notifications.mark_notification_read, name='mark_notification_read'),
     path('student/profile/', views.student_profile, name='student_profile'),
     path('student/password/', views.student_password_change, name='student_password_change'),
     path('student/profile/update/', views.student_profile_update, name='student_profile_update'),
+    path('student/notifications/', views_notifications.student_notifications, name='student_notifications'),
+    path('student/notifications/mark-read/<int:exam_id>/', views_notifications.mark_notification_read, name='mark_notification_read'),
+    path('student/notifications/bulk-action/', views_notifications.bulk_notification_action, name='bulk_notification_action'),
     path('student/start-exam/<int:exam_id>/', views.start_exam, name='start_exam'),
     path('student/mcq-exam/<int:exam_id>/', views.mcq_exam, name='mcq_exam'),
     path('student/start-mcq-exam/<int:exam_id>/', views.start_mcq_exam, name='start_mcq_exam'),

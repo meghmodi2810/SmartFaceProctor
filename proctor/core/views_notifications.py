@@ -117,3 +117,83 @@ def mark_notification_read(request, exam_id):
             return JsonResponse({'success': False, 'message': str(e)}, status=500)
     
     return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
+
+
+@login_required
+def bulk_notification_action(request):
+    """Handle bulk actions on notifications (mark read/unread, delete)"""
+    if request.method != 'POST' or request.user.role != 'Student':
+        return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
+    
+    try:
+        import json
+        data = json.loads(request.body)
+        action = data.get('action')  # 'mark_read', 'mark_unread', 'delete'
+        exam_ids = data.get('exam_ids', [])
+        
+        if not action or not exam_ids:
+            return JsonResponse({'success': False, 'message': 'Action and exam IDs required'}, status=400)
+        
+        if action == 'mark_read':
+            # Mark selected notifications as read
+            for exam_id in exam_ids:
+                try:
+                    exam = Exam.objects.get(id=exam_id)
+                    NotificationRead.objects.get_or_create(
+                        student=request.user,
+                        exam=exam
+                    )
+                except Exam.DoesNotExist:
+                    continue
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'{len(exam_ids)} notification(s) marked as read'
+            })
+        
+        elif action == 'mark_unread':
+            # Mark selected notifications as unread
+            NotificationRead.objects.filter(
+                student=request.user,
+                exam_id__in=exam_ids
+            ).delete()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'{len(exam_ids)} notification(s) marked as unread'
+            })
+        
+        elif action == 'delete':
+            # Delete notification read status (hide from view)
+            deleted_count = NotificationRead.objects.filter(
+                student=request.user,
+                exam_id__in=exam_ids
+            ).update(is_deleted=True)
+            
+            # If NotificationRead doesn't have is_deleted field, create new records
+            for exam_id in exam_ids:
+                try:
+                    exam = Exam.objects.get(id=exam_id)
+                    obj, created = NotificationRead.objects.get_or_create(
+                        student=request.user,
+                        exam=exam
+                    )
+                    # Mark as deleted (you may need to add this field to the model)
+                    if hasattr(obj, 'is_deleted'):
+                        obj.is_deleted = True
+                        obj.save()
+                except Exam.DoesNotExist:
+                    continue
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'{len(exam_ids)} notification(s) deleted'
+            })
+        
+        else:
+            return JsonResponse({'success': False, 'message': 'Invalid action'}, status=400)
+    
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)

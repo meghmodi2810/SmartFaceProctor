@@ -5,14 +5,10 @@ from datetime import datetime, timedelta
 
 class DistractionDetector:
     def __init__(self):
-        # Initialize MediaPipe Face Mesh with optimized settings
-        self.mp_face_mesh = mp.solutions.face_mesh
-        self.face_mesh = self.mp_face_mesh.FaceMesh(
-            max_num_faces=2,  # Detect up to 2 faces for multiple person detection
-            refine_landmarks=True,
-            min_detection_confidence=0.6,  # Increased for better accuracy
-            min_tracking_confidence=0.6
-        )
+        # Lazy initialization - don't create MediaPipe until first use
+        self.mp_face_mesh = None
+        self.face_mesh = None
+        self._initialized = False
         
         # Initialize state variables
         self.warning_count = 0
@@ -26,13 +22,13 @@ class DistractionDetector:
         self.last_focused_time = None
         self.calibration_frames = 0
         self.calibration_complete = False
-        self.system_ready = False  # NEW: Track if system is fully initialized
-        self.initialization_start_time = None  # NEW: Track initialization start
+        self.system_ready = False
+        self.initialization_start_time = None
         
-        # Movement tracking - NEW
+        # Movement tracking
         self.prev_nose_pos = None
         self.prev_iris_pos = None
-        self.movement_history = []  # Track last 5 frames of movement
+        self.movement_history = []
         self.MOVEMENT_HISTORY_SIZE = 5
         
         # Freeze management
@@ -40,7 +36,7 @@ class DistractionDetector:
         self.freeze_start_time = None
         self.freeze_duration = 300  # 5 minutes
         self.last_warning_time = None
-        self.warning_cooldown = 10  # More lenient: 10 seconds between warnings
+        self.warning_cooldown = 10
         
         # Face landmarks for detection
         self.LEFT_IRIS = [474, 475, 476, 477]
@@ -48,20 +44,35 @@ class DistractionDetector:
         self.NOSE_TIP = 1
         self.CHIN = 152
         
-        # LENIENT thresholds - Less sensitive for better user experience
-        self.GAZE_THRESHOLD = 60  # More lenient: 60 pixels (was 30)
-        self.HEAD_MOVEMENT_THRESHOLD = 100  # More lenient: 100 pixels (was 60)
-        self.VERTICAL_GAZE_THRESHOLD = 50  # More lenient: 50 pixels (was 25)
-        self.MOVEMENT_THRESHOLD = 40  # More lenient: 40 pixels (was 20)
-        self.EXCESSIVE_MOVEMENT_THRESHOLD = 70  # More lenient: 70 pixels (was 35)
+        # LENIENT thresholds
+        self.GAZE_THRESHOLD = 60
+        self.HEAD_MOVEMENT_THRESHOLD = 100
+        self.VERTICAL_GAZE_THRESHOLD = 50
+        self.MOVEMENT_THRESHOLD = 40
+        self.EXCESSIVE_MOVEMENT_THRESHOLD = 70
         
         # Calibration data
         self.baseline_nose_x = None
         self.baseline_iris_x = None
         
-        # Multiple face detection - More lenient
+        # Multiple face detection
         self.multiple_face_start_time = None
-        self.multiple_face_threshold = 5  # More lenient: 5 seconds
+        self.multiple_face_threshold = 5
+
+    def _initialize_mediapipe(self):
+        """Lazy initialization of MediaPipe - only when first frame is processed"""
+        if not self._initialized:
+            self.mp_face_mesh = mp.solutions.face_mesh
+            # Optimized settings for faster initialization
+            self.face_mesh = self.mp_face_mesh.FaceMesh(
+                max_num_faces=2,
+                refine_landmarks=True,
+                min_detection_confidence=0.5,  # Lower for faster detection
+                min_tracking_confidence=0.5,   # Lower for faster tracking
+                static_image_mode=False        # Faster for video
+            )
+            self._initialized = True
+            print("✅ MediaPipe initialized")
 
     def set_warning_threshold(self, limit):
         """Set the maximum number of warnings before freezing the exam"""
@@ -77,6 +88,10 @@ class DistractionDetector:
 
     def detect_distraction(self, frame):
         """Process a frame and detect distractions with improved accuracy"""
+        # Lazy initialization on first frame
+        if not self._initialized:
+            self._initialize_mediapipe()
+        
         current_time = datetime.now()
         
         # Initialize response
@@ -130,30 +145,25 @@ class DistractionDetector:
         else:
             self.multiple_face_start_time = None
 
-        # Check for face absence - DELAYED FEEDBACK (more lenient)
+        # Check for face absence
         if not results.multi_face_landmarks:
-            # During initialization/calibration, be very lenient
             if not self.system_ready:
-                response['warning_message'] = '🔄 Initializing camera... Please look at the screen'
+                response['warning_message'] = '🔄 Initializing... Please look at the screen'
                 return response
             
             if self.last_face_detected_time is None:
                 self.last_face_detected_time = current_time
-                # Show gentle reminder instead of immediate warning
                 response['warning_message'] = '📸 Adjusting camera...'
             else:
                 time_without_face = (current_time - self.last_face_detected_time).total_seconds()
                 
-                # Only show warning after a few seconds (more lenient)
                 if time_without_face >= 4:
                     response['warning_message'] = f'⚠️ Please ensure your face is visible ({int(time_without_face)}s)'
                 else:
                     response['warning_message'] = '📸 Adjusting camera...'
                 
-                # Issue warning after threshold (now 8 seconds)
                 if time_without_face >= self.absence_threshold:
                     self._handle_warning('Face Missing')
-                    # Don't reset timer - keep accumulating to show continuous absence
             return response
 
         # Single face detected
@@ -165,8 +175,8 @@ class DistractionDetector:
         mesh_coords = [(int(point.x * frame_width), int(point.y * frame_height))
                       for point in face_landmarks.landmark]
 
-        # Calibration phase (extended for better accuracy and user experience)
-        if self.calibration_frames < 60:  # Extended to 60 frames (~2 seconds)
+        # FASTER Calibration phase - reduced to 20 frames (~0.67 seconds at 30fps)
+        if self.calibration_frames < 20:  # Reduced from 60 to 20 frames
             if self.initialization_start_time is None:
                 self.initialization_start_time = current_time
             
@@ -184,14 +194,15 @@ class DistractionDetector:
             
             self.calibration_frames += 1
             
-            # Show user-friendly calibration message
-            progress = int((self.calibration_frames / 60) * 100)
-            response['warning_message'] = f'🔄 Calibrating monitoring system... {progress}% complete'
+            # Show simplified calibration message
+            progress = int((self.calibration_frames / 20) * 100)
+            if progress < 100:
+                response['warning_message'] = f'🔄 Calibrating... {progress}%'
             
-            if self.calibration_frames == 60:
+            if self.calibration_frames == 20:
                 self.calibration_complete = True
                 self.system_ready = True
-                response['warning_message'] = '✅ Monitoring system ready'
+                response['warning_message'] = '✅ Ready'
             
             return response
 
@@ -217,12 +228,11 @@ class DistractionDetector:
         nose_y = mesh_coords[self.NOSE_TIP][1]
         head_offset = abs(nose_x - reference_x)
 
-        # MOVEMENT DETECTION - Track frame-to-frame changes
+        # MOVEMENT DETECTION
         movement_detected = False
         movement_magnitude = 0
         
         if self.prev_nose_pos is not None and self.prev_iris_pos is not None:
-            # Calculate movement from previous frame
             nose_movement = np.sqrt((nose_x - self.prev_nose_pos[0])**2 + 
                                    (nose_y - self.prev_nose_pos[1])**2)
             iris_movement = np.sqrt((avg_iris_x - self.prev_iris_pos[0])**2 + 
@@ -230,12 +240,10 @@ class DistractionDetector:
             
             movement_magnitude = max(nose_movement, iris_movement)
             
-            # Add to movement history
             self.movement_history.append(movement_magnitude)
             if len(self.movement_history) > self.MOVEMENT_HISTORY_SIZE:
                 self.movement_history.pop(0)
             
-            # Check for excessive movement
             avg_movement = sum(self.movement_history) / len(self.movement_history) if self.movement_history else 0
             
             if movement_magnitude > self.EXCESSIVE_MOVEMENT_THRESHOLD:
@@ -243,37 +251,27 @@ class DistractionDetector:
             elif avg_movement > self.MOVEMENT_THRESHOLD:
                 movement_detected = True
         
-        # Update previous positions
         self.prev_nose_pos = (nose_x, nose_y)
         self.prev_iris_pos = (avg_iris_x, avg_iris_y)
 
-        # Detect distractions with LENIENT logic (less sensitive)
+        # Detect distractions
         is_distracted = False
         distraction_reason = ''
         
-        # Priority 1: Excessive movement (most suspicious)
         if movement_detected and movement_magnitude > self.EXCESSIVE_MOVEMENT_THRESHOLD:
             is_distracted = True
             distraction_reason = '🚨 EXCESSIVE MOVEMENT DETECTED'
-        
-        # Priority 2: Horizontal gaze detection (looking left/right)
         elif horizontal_gaze_offset > self.GAZE_THRESHOLD:
             is_distracted = True
             direction = 'left' if avg_iris_x < reference_x else 'right'
             distraction_reason = f'⚠️ LOOKING {direction.upper()}'
-        
-        # Priority 3: Vertical gaze detection (looking up/down)
         elif vertical_gaze_offset > self.VERTICAL_GAZE_THRESHOLD:
             is_distracted = True
             direction = 'down' if avg_iris_y > frame_center_y else 'up'
             distraction_reason = f'⚠️ LOOKING {direction.upper()}'
-        
-        # Priority 4: Head movement detection
         elif head_offset > self.HEAD_MOVEMENT_THRESHOLD:
             is_distracted = True
             distraction_reason = '⚠️ HEAD TURNED AWAY'
-        
-        # Priority 5: Sustained movement (fidgeting/looking around)
         elif movement_detected:
             is_distracted = True
             distraction_reason = '⚠️ SUSPICIOUS MOVEMENT'
@@ -282,7 +280,6 @@ class DistractionDetector:
         if is_distracted:
             if self.distraction_start_time is None:
                 self.distraction_start_time = current_time
-                # Show immediate feedback
                 response['warning_message'] = distraction_reason
             else:
                 distraction_duration = (current_time - self.distraction_start_time).total_seconds()
@@ -291,33 +288,29 @@ class DistractionDetector:
                     self._handle_warning('Looking Away')
                     self.distraction_start_time = current_time
                 else:
-                    # Show escalating urgency
                     response['warning_message'] = f'{distraction_reason} - {int(distraction_duration)}s'
         else:
-            # Student is focused
             self.distraction_start_time = None
             self.last_focused_time = current_time
 
         return response
 
     def _handle_warning(self, violation_type='Distraction'):
-        """Handle warning with cooldown period - increments warning count and freezes if limit exceeded"""
+        """Handle warning with cooldown period"""
         current_time = datetime.now()
         
-        # Check if enough time has passed since last warning
         if (self.last_warning_time is None or 
             (current_time - self.last_warning_time).total_seconds() >= self.warning_cooldown):
             
             self.warning_count += 1
             self.last_warning_time = current_time
-            self.last_violation_type = violation_type  # Store for logging
+            self.last_violation_type = violation_type
             
-            # Check if warning limit exceeded - freeze the exam
             if self.warning_count >= self.warning_limit:
                 self.freeze_exam()
             
-            return True  # Indicate a warning was issued
-        return False  # Warning was in cooldown
+            return True
+        return False
 
     def freeze_exam(self):
         """Freeze the exam for the duration specified"""
@@ -327,16 +320,16 @@ class DistractionDetector:
             print(f"EXAM FROZEN at {self.freeze_start_time} for {self.freeze_duration} seconds")
 
     def unfreeze_exam(self):
-        """Unfreeze the exam and reset warnings after freeze duration ends"""
+        """Unfreeze the exam and reset warnings"""
         self.is_exam_frozen = False
         self.freeze_start_time = None
-        self.warning_count = 0  # Reset warnings after freeze
+        self.warning_count = 0
         self.last_warning_time = None
-        self.distraction_start_time = None  # Reset distraction timer
+        self.distraction_start_time = None
         print(f"EXAM UNFROZEN - warnings reset")
     
     def faculty_unfreeze_exam(self):
-        """Unfreeze exam by faculty intervention - doesn't reset warnings"""
+        """Unfreeze exam by faculty intervention"""
         self.is_exam_frozen = False
         self.freeze_start_time = None
         print(f"EXAM UNFROZEN BY FACULTY")

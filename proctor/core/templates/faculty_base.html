@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Faculty Dashboard - Proctoring System{% endblock %}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -37,6 +38,7 @@
             gap: 2rem;
             margin: 0;
             padding: 0;
+            align-items: center;
         }
         .navbar ul li {
             display: inline;
@@ -54,6 +56,90 @@
             background: rgba(255,255,255,0.08);
             transform: translateY(-2px) scale(1.08);
         }
+        
+        /* Dropdown Styles */
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-toggle {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: .3rem .8rem;
+            border-radius: 5px;
+            font-weight: 500;
+            transition: color .2s, transform .2s;
+            font-size: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .dropdown-toggle:hover {
+            color: #ffd700;
+            background: rgba(255,255,255,.08);
+            transform: translateY(-2px) scale(1.08);
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            margin-top: 1rem;
+            background: white;
+            min-width: 280px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            overflow: hidden;
+            border: 2px solid #e2e8f0;
+            padding: 0.5rem 0;
+        }
+        .dropdown-menu.show {
+            display: block;
+            animation: dropdownSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes dropdownSlide {
+            from { 
+                opacity: 0; 
+                transform: translateY(-15px) scale(0.95); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0) scale(1); 
+            }
+        }
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.9rem 1.5rem;
+            color: #1e293b !important;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid #f1f5f9;
+            font-weight: 500;
+            background: white;
+        }
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+        .dropdown-item:hover {
+            background: linear-gradient(90deg, #f8fafc 0%, #e0e7ff 100%);
+            color: #4f8cff !important;
+            padding-left: 2rem;
+        }
+        .dropdown-item i {
+            width: 20px;
+            font-size: 1.1rem;
+            text-align: center;
+            color: #64748b;
+        }
+        .dropdown-item:hover i {
+            color: #4f8cff;
+        }
+        
         .main-content {
             flex: 1;
             padding: 2rem;
@@ -104,22 +190,35 @@
                 width: 100%;
             }
             
-            .navbar ul li a {
+            .navbar ul li a,
+            .navbar ul li .dropdown-toggle {
                 display: block;
                 padding: 1rem 2rem;
                 border-bottom: 1px solid rgba(255,255,255,0.1);
                 border-radius: 0;
+                width: 100%;
+                text-align: left;
             }
             
-            .navbar ul li a:hover {
+            .navbar ul li a:hover,
+            .navbar ul li .dropdown-toggle:hover {
                 transform: none;
                 background: rgba(255,255,255,0.1);
+            }
+            
+            .dropdown-menu {
+                position: static;
+                width: 100%;
+                margin-top: 0;
+                border-radius: 0;
+                box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);
             }
             
             .main-content {
                 padding: 1rem;
             }
         }
+        
         .footer {
             width: 100%;
             background: linear-gradient(90deg, #2d3e50 60%, #4f8cff 100%);
@@ -135,19 +234,6 @@
             color: #ffd700;
             font-weight: 500;
         }
-        .nav-link-disabled {
-            opacity: 0.6;
-            cursor: not-allowed !important;
-            pointer-events: none;
-        }
-        .nav-link-highlight {
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0% { text-shadow: 0 0 0 0 rgba(255, 215, 0, 0.4); }
-            70% { text-shadow: 0 0 10px 10px rgba(255, 215, 0, 0); }
-            100% { text-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
-        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -156,10 +242,26 @@
         <div class="logo">Smart Face Proctor</div>
         <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
         <ul id="mobile-menu">
-            <li><a href="{% url 'faculty_dashboard' %}">Dashboard</a></li>
-            <li><a href="{% url 'faculty_profile' %}">Profile</a></li>
-            <li><a href="{% url 'report_bug' %}">Report Bug</a></li>
-            <li><a href="{% url 'logout' %}">Logout</a></li>
+            <li><a href="{% url 'faculty_dashboard' %}"><i class="fas fa-home"></i> Dashboard</a></li>
+            <li class="dropdown">
+                <button class="dropdown-toggle" onclick="toggleDropdown()">
+                    <i class="fas fa-cog"></i> Settings <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="dropdown-menu" id="settingsDropdown">
+                    <a href="{% url 'faculty_profile' %}" class="dropdown-item">
+                        <i class="fas fa-user-circle"></i>
+                        <span>My Profile</span>
+                    </a>
+                    <a href="{% url 'report_bug' %}" class="dropdown-item">
+                        <i class="fas fa-bug"></i>
+                        <span>Report Issue</span>
+                    </a>
+                    <a href="{% url 'logout' %}" class="dropdown-item">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </a>
+                </div>
+            </li>
         </ul>
     </nav>
     
@@ -175,6 +277,24 @@
         function toggleMobileMenu() {
             const menu = document.getElementById('mobile-menu');
             menu.classList.toggle('active');
+        }
+        
+        function toggleDropdown() {
+            const dropdown = document.getElementById('settingsDropdown');
+            dropdown.classList.toggle('show');
+        }
+        
+        // Close dropdown when clicking outside
+        window.onclick = function(event) {
+            if (!event.target.matches('.dropdown-toggle') && !event.target.closest('.dropdown-toggle')) {
+                const dropdowns = document.getElementsByClassName('dropdown-menu');
+                for (let i = 0; i < dropdowns.length; i++) {
+                    const openDropdown = dropdowns[i];
+                    if (openDropdown.classList.contains('show')) {
+                        openDropdown.classList.remove('show');
+                    }
+                }
+            }
         }
         
         // Close mobile menu when clicking outside
