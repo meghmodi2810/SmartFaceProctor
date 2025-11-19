@@ -261,6 +261,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     const filterBtns = document.querySelectorAll('.filter-btn');
     const examItems = document.querySelectorAll('.exam-item');
+    const examsList = document.querySelector('.exams-list');
     
     filterBtns.forEach(btn => {
         btn.addEventListener('click', function() {
@@ -268,14 +269,34 @@ document.addEventListener('DOMContentLoaded', function() {
             this.classList.add('active');
             
             const filter = this.getAttribute('data-filter');
+            let visibleCount = 0;
             
             examItems.forEach(item => {
                 if (filter === 'all' || item.getAttribute('data-status') === filter) {
                     item.style.display = 'flex';
+                    visibleCount++;
                 } else {
                     item.style.display = 'none';
                 }
             });
+            
+            // Remove any existing "no results" message
+            const existingMessage = examsList.querySelector('.no-filter-results');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+            
+            // Show "no exams found" message if no exams match the filter
+            if (visibleCount === 0 && examItems.length > 0) {
+                const noResultsMessage = document.createElement('li');
+                noResultsMessage.className = 'empty-state no-filter-results';
+                noResultsMessage.innerHTML = `
+                    <i class="fas fa-filter" style="font-size: 3rem; opacity: 0.3; margin-bottom: 1rem;"></i>
+                    <h3>No Exams Found</h3>
+                    <p>No exams match the selected filter: <strong>${this.textContent}</strong></p>
+                `;
+                examsList.appendChild(noResultsMessage);
+            }
         });
     });
 });

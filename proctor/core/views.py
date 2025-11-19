@@ -1580,7 +1580,70 @@ def exam_review(request, exam_id):
 		if not submission:
 			messages.error(request, 'No submission found for this exam.')
 			return redirect('student_exams')
-		return render(request, 'exam_review.html', {'exam': exam, 'submission': submission, 'student': user})
+		
+		# Get all questions for this exam
+		questions = Question.objects.filter(exam=exam).order_by('id')
+		
+		# Get student's answers from ExamProgress (if exists)
+		from .models import ExamProgress
+		progress = ExamProgress.objects.filter(exam=exam, student=user).first()
+		student_answers = progress.answers if progress else {}
+		
+		# Build detailed question analysis
+		question_analysis = []
+		correct_count = 0
+		incorrect_count = 0
+		unattempted_count = 0
+		
+		for idx, question in enumerate(questions, 1):
+			student_answer = student_answers.get(str(question.id), '')
+			correct_answer = question.answer
+			
+			is_correct = False
+			is_attempted = bool(student_answer)
+			
+			if is_attempted:
+				is_correct = (student_answer == correct_answer)
+				if is_correct:
+					correct_count += 1
+				else:
+					incorrect_count += 1
+			else:
+				unattempted_count += 1
+			
+			question_analysis.append({
+				'number': idx,
+				'question': question,
+				'student_answer': student_answer,
+				'correct_answer': correct_answer,
+				'is_correct': is_correct,
+				'is_attempted': is_attempted,
+				'options': {
+					'A': question.option_a,
+					'B': question.option_b,
+					'C': question.option_c,
+					'D': question.option_d,
+				}
+			})
+		
+		# Calculate grade
+		from .views_student_results import calculate_grade
+		grade = calculate_grade(submission.score)
+		
+		context = {
+			'exam': exam,
+			'submission': submission,
+			'student': user,
+			'question_analysis': question_analysis,
+			'total_questions': questions.count(),
+			'correct_count': correct_count,
+			'incorrect_count': incorrect_count,
+			'unattempted_count': unattempted_count,
+			'grade': grade,
+			'accuracy': round((correct_count / questions.count() * 100), 1) if questions.count() > 0 else 0
+		}
+		
+		return render(request, 'exam_review.html', context)
 	except Exam.DoesNotExist:
 		messages.error(request, 'Exam not found.')
 		return redirect('student_exams')
@@ -1778,14 +1841,21 @@ def submit_exam(request, exam_id):
         questions = Question.objects.filter(exam=exam)
         correct_count = 0
         total_questions = questions.count()
+        attempted_count = 0
         
         for question in questions:
             student_answer = answers.get(str(question.id), '')
-            if student_answer == question.answer:
-                correct_count += 1
+            if student_answer:  # Count only if student provided an answer
+                attempted_count += 1
+                if student_answer == question.answer:
+                    correct_count += 1
         
-        # Calculate percentage score
-        score = (correct_count / total_questions * 100) if total_questions > 0 else 0
+        # Calculate percentage score based on attempted questions
+        # If no questions attempted, score is 0
+        if attempted_count > 0:
+            score = (correct_count / attempted_count * 100)
+        else:
+            score = 0
         
         # Create submission
         try:
@@ -2032,12 +2102,8 @@ def get_semesters_api(request):
     
     try:
         department = Department.objects.get(id=department_id, is_active=True)
-        try:
-            from .models import Semester as _Semester
-            semesters = _Semester.objects.filter(department=department, is_active=True).order_by('name')
-            semesters_data = [{'id': s.id, 'name': s.name} for s in semesters]
-        except Exception:
-            semesters_data = []
+        semesters = Semester.objects.filter(department=department, is_active=True).order_by('name')
+        semesters_data = [{'id': s.id, 'name': s.name} for s in semesters]
         return JsonResponse({'semesters': semesters_data})
     except Department.DoesNotExist:
         return JsonResponse({'error': 'Department not found'}, status=404)
@@ -2056,15 +2122,13 @@ def get_divisions_api(request):
     
     try:
         department = Department.objects.get(id=department_id, is_active=True)
-        try:
-            from .models import Division as _Division
-            divisions_query = _Division.objects.filter(department=department, is_active=True)
-            if semester_id:
-                divisions_query = divisions_query.filter(semester_id=semester_id)
-            divisions = divisions_query.order_by('name')
-            divisions_data = [{'id': d.id, 'name': d.name} for d in divisions]
-        except Exception:
-            divisions_data = []
+        divisions_query = Division.objects.filter(department=department, is_active=True)
+        
+        if semester_id:
+            divisions_query = divisions_query.filter(semester_id=semester_id)
+        
+        divisions = divisions_query.order_by('name')
+        divisions_data = [{'id': d.id, 'name': d.name} for d in divisions]
         return JsonResponse({'divisions': divisions_data})
     except Department.DoesNotExist:
         return JsonResponse({'error': 'Department not found'}, status=404)
@@ -2634,8 +2698,12 @@ def get_semesters_api(request):
     
     try:
         department = Department.objects.get(id=department_id, is_active=True)
-        semesters = Semester.objects.filter(department=department, is_active=True).order_by('name')
-        semesters_data = [{'id': s.id, 'name': s.name} for s in semesters]
+        try:
+            from .models import Semester as _Semester
+            semesters = _Semester.objects.filter(department=department, is_active=True).order_by('name')
+            semesters_data = [{'id': s.id, 'name': s.name} for s in semesters]
+        except Exception:
+            semesters_data = []
         return JsonResponse({'semesters': semesters_data})
     except Department.DoesNotExist:
         return JsonResponse({'error': 'Department not found'}, status=404)
@@ -2654,13 +2722,15 @@ def get_divisions_api(request):
     
     try:
         department = Department.objects.get(id=department_id, is_active=True)
-        divisions_query = Division.objects.filter(department=department, is_active=True)
-        
-        if semester_id:
-            divisions_query = divisions_query.filter(semester_id=semester_id)
-        
-        divisions = divisions_query.order_by('name')
-        divisions_data = [{'id': d.id, 'name': d.name} for d in divisions]
+        try:
+            from .models import Division as _Division
+            divisions_query = _Division.objects.filter(department=department, is_active=True)
+            if semester_id:
+                divisions_query = divisions_query.filter(semester_id=semester_id)
+            divisions = divisions_query.order_by('name')
+            divisions_data = [{'id': d.id, 'name': d.name} for d in divisions]
+        except Exception:
+            divisions_data = []
         return JsonResponse({'divisions': divisions_data})
     except Department.DoesNotExist:
         return JsonResponse({'error': 'Department not found'}, status=404)

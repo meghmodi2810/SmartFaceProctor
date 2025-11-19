@@ -5,6 +5,7 @@ from . import session_admin_views
 from . import faculty_monitoring_views
 from . import views_notifications
 from . import views_student_results
+from . import views_api
 
 urlpatterns = [
     path('', views.home, name='home'),  # Make home the default landing page
@@ -60,6 +61,7 @@ urlpatterns = [
     path('student/exam-instructions/<int:exam_id>/', views.exam_instructions, name='exam_instructions'),
     path('student/exam-results/<int:exam_id>/', views.exam_results, name='exam_results'),
     path('student/exam-review/<int:exam_id>/', views.exam_review, name='exam_review'),
+    
     # Exam Feedback URLs
     path('exam-feedback/<int:exam_id>/', views.exam_feedback, name='exam_feedback'),
     path('submit-feedback/<int:exam_id>/', views.submit_feedback, name='submit_feedback'),
@@ -72,12 +74,19 @@ urlpatterns = [
     path('check_distraction/', views.check_distraction, name='check_distraction'),
     path('log-violation/', views.log_violation, name='log_violation'),
     
+    # API endpoints for AJAX search
+    path('api/search-results/', views_api.search_results, name='search_results'),
+    path('api/search-student-results/', views_api.search_student_results, name='search_student_results'),
+    path('api/admin/search-users/', views_api.admin_search_users, name='admin_search_users'),
+    
     # Custom Admin URLs
     path('customadmin/login/', admin_views.admin_login, name='admin_login'),
     path('customadmin/logout/', admin_views.admin_logout, name='admin_logout'),
     path('customadmin/dashboard/', admin_views.admin_dashboard, name='admin_dashboard'),
     path('customadmin/users/', admin_views.admin_users, name='admin_users'),
     path('customadmin/users/import/', admin_views.admin_import_users, name='admin_import_users'),
+    path('customadmin/users/import-guide/', admin_views.admin_user_import_guide, name='admin_user_import_guide'),
+    path('customadmin/users/download-template/', admin_views.download_user_template, name='download_user_template'),
     path('customadmin/users/create/', admin_views.admin_user_create, name='admin_user_create'),
     path('customadmin/users/<int:user_id>/', admin_views.admin_user_detail, name='admin_user_detail'),
     path('customadmin/exams/', admin_views.admin_exams, name='admin_exams'),

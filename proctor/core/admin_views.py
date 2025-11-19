@@ -314,18 +314,169 @@ def admin_create_user(request):
 
 @admin_required
 def admin_import_users(request):
-    """Import users from CSV"""
+    """Import users from CSV or Excel file with new format: id, name, email, contact, role"""
     if request.method == 'POST':
-        csv_file = request.FILES.get('csv_file')
-        if csv_file:
+        user_file = request.FILES.get('user_file')
+        if user_file:
             try:
-                mailer = SmartFaceProctorMailer()
-                mailer.import_users_from_csv(csv_file)
-                messages.success(request, 'Users imported successfully.')
+                import pandas as pd
+                import io
+                
+                # Read file based on extension
+                file_extension = user_file.name.split('.')[-1].lower()
+                
+                if file_extension == 'csv':
+                    df = pd.read_csv(io.StringIO(user_file.read().decode('utf-8')))
+                elif file_extension in ['xlsx', 'xls']:
+                    df = pd.read_excel(user_file)
+                else:
+                    messages.error(request, 'Invalid file format. Please upload CSV or Excel file.')
+                    return redirect('admin_users')
+                
+                # Validate required columns - NEW FORMAT
+                required_columns = ['id', 'name', 'email', 'contact', 'role']
+                missing_columns = [col for col in required_columns if col not in df.columns]
+                
+                if missing_columns:
+                    messages.error(request, f'Missing required columns: {", ".join(missing_columns)}. Required: id, name, email, contact, role')
+                    return redirect('admin_users')
+                
+                # Import users
+                imported_count = 0
+                skipped_count = 0
+                errors = []
+                
+                for index, row in df.iterrows():
+                    try:
+                        # Get data from new format
+                        user_id = str(row['id']).strip()
+                        name = str(row['name']).strip()
+                        email = str(row['email']).strip()
+                        contact = str(row['contact']).strip() if pd.notna(row['contact']) else ''
+                        role = str(row['role']).strip()
+                        
+                        # Generate username from ID
+                        username = f"user{user_id}"
+                        
+                        # Generate default password (user can change later)
+                        default_password = f"{username}@123"
+                        
+                        # Split name into first and last name
+                        name_parts = name.split(maxsplit=1)
+                        first_name = name_parts[0] if len(name_parts) > 0 else ''
+                        last_name = name_parts[1] if len(name_parts) > 1 else ''
+                        
+                        # Check if user already exists by username
+                        if User.objects.filter(username=username).exists():
+                            skipped_count += 1
+                            errors.append(f"Row {index + 2}: User with ID '{user_id}' already exists")
+                            continue
+                        
+                        # Check if email already exists
+                        if User.objects.filter(email=email).exists():
+                            skipped_count += 1
+                            errors.append(f"Row {index + 2}: Email '{email}' already exists")
+                            continue
+                        
+                        # Validate role
+                        if role not in ['Student', 'Faculty', 'Admin']:
+                            skipped_count += 1
+                            errors.append(f"Row {index + 2}: Invalid role '{role}'. Must be: Student, Faculty, or Admin")
+                            continue
+                        
+                        # Create user
+                        user = User.objects.create_user(
+                            username=username,
+                            email=email,
+                            password=default_password,
+                            first_name=first_name,
+                            last_name=last_name,
+                            role=role,
+                            is_active=True
+                        )
+                        
+                        # Store contact number if User model has a contact field
+                        if hasattr(user, 'contact') and contact:
+                            user.contact = contact
+                            user.save()
+                        
+                        imported_count += 1
+                        
+                    except Exception as e:
+                        skipped_count += 1
+                        errors.append(f"Row {index + 2}: {str(e)}")
+                
+                # Show results
+                if imported_count > 0:
+                    messages.success(request, f'Successfully imported {imported_count} users. Default password format: username@123 (e.g., user1@123)')
+                
+                if skipped_count > 0:
+                    error_msg = f'Skipped {skipped_count} users. '
+                    if len(errors) <= 10:
+                        error_msg += 'Errors: ' + '; '.join(errors[:10])
+                    else:
+                        error_msg += f'First 10 errors: ' + '; '.join(errors[:10]) + f' (and {len(errors) - 10} more)'
+                    messages.warning(request, error_msg)
+                
             except Exception as e:
                 messages.error(request, f'Error importing users: {str(e)}')
+        else:
+            messages.error(request, 'No file uploaded.')
     
-    return render(request, 'admin_import_users.html')
+    return redirect('admin_users')
+
+
+@admin_required
+def admin_user_import_guide(request):
+    """Display the user import guide"""
+    return render(request, 'admin_user_import_guide.html', {'admin': request.user})
+
+
+@admin_required
+def download_user_template(request):
+    """Download user import template"""
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill
+        
+        # Create workbook
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Users"
+        
+        # Add headers - UPDATED FORMAT
+        headers = ['id', 'name', 'email', 'contact', 'role']
+        ws.append(headers)
+        
+        # Add sample data
+        ws.append(['1', 'John Doe', 'john@example.com', '9876543210', 'Student'])
+        ws.append(['2', 'Jane Smith', 'jane@example.com', '9876543211', 'Faculty'])
+        ws.append(['3', 'Admin User', 'admin@example.com', '9876543212', 'Admin'])
+        
+        # Style headers
+        header_fill = PatternFill(start_color="667EEA", end_color="667EEA", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF")
+        
+        for cell in ws[1]:
+            cell.fill = header_fill
+            cell.font = header_font
+        
+        # Set column widths
+        ws.column_dimensions['A'].width = 8   # id
+        ws.column_dimensions['B'].width = 20  # name
+        ws.column_dimensions['C'].width = 25  # email
+        ws.column_dimensions['D'].width = 15  # contact
+        ws.column_dimensions['E'].width = 10  # role
+        
+        # Save to response
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename=UsersTemplate.xlsx'
+        wb.save(response)
+        
+        return response
+    except ImportError:
+        messages.error(request, 'openpyxl library not installed. Please run: pip install openpyxl')
+        return redirect('admin_users')
 
 
 @admin_required

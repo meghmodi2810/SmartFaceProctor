@@ -419,6 +419,11 @@
                     <a href="{% url 'exam_instructions' exam.id %}" class="action-btn btn-primary">
                         <i class="fas fa-play"></i> Start Exam Now
                     </a>
+                    {% if not exam.is_read %}
+                    <button class="action-btn btn-secondary" onclick="markAsRead({{ exam.id }})" style="background: #10b981; color: white; border: none; cursor: pointer;">
+                        <i class="fas fa-check"></i> Mark as Read
+                    </button>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -466,6 +471,11 @@
                     <a href="{% url 'exam_instructions' exam.id %}" class="action-btn btn-primary">
                         <i class="fas fa-info-circle"></i> View Instructions
                     </a>
+                    {% if not exam.is_read %}
+                    <button class="action-btn btn-secondary" onclick="markAsRead({{ exam.id }})" style="background: #10b981; color: white; border: none; cursor: pointer;">
+                        <i class="fas fa-check"></i> Mark as Read
+                    </button>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -509,6 +519,13 @@
                         <span>{{ exam.duration_minutes }} minutes</span>
                     </div>
                 </div>
+                <div class="notification-actions">
+                    {% if not exam.is_read %}
+                    <button class="action-btn btn-secondary" onclick="markAsRead({{ exam.id }})" style="background: #10b981; color: white; border: none; cursor: pointer;">
+                        <i class="fas fa-check"></i> Mark as Read
+                    </button>
+                    {% endif %}
+                </div>
             </div>
         </div>
         {% endfor %}
@@ -551,6 +568,13 @@
                         <span>{{ exam.duration_minutes }} minutes</span>
                     </div>
                 </div>
+                <div class="notification-actions">
+                    {% if not exam.is_read %}
+                    <button class="action-btn btn-secondary" onclick="markAsRead({{ exam.id }})" style="background: #10b981; color: white; border: none; cursor: pointer;">
+                        <i class="fas fa-check"></i> Mark as Read
+                    </button>
+                    {% endif %}
+                </div>
             </div>
         </div>
         {% endfor %}
@@ -558,10 +582,10 @@
     {% endif %}
     
     <!-- Empty State -->
-    {% if not urgent_exams and not warning_10min_exams and not warning_30min_exams and not upcoming_exams and not missed_exams %}
+    {% if not urgent_exams and not warning_10min_exams and not warning_30min_exams and not upcoming_exams %}
     <div class="empty-state">
         <i class="fas fa-bell-slash"></i>
-        <h3>No Notifications</h3>
+        <h3>No New Notifications</h3>
         <p>You're all caught up! No exams scheduled at the moment.</p>
     </div>
     {% endif %}
@@ -685,6 +709,46 @@ function bulkAction(action) {
             // Show success message
             alert(data.message);
             
+            // Reload page to reflect changes
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred: ' + error.message);
+    });
+}
+
+// Mark individual notification as read
+function markAsRead(examId) {
+    // Get CSRF token
+    const csrfToken = getCSRFToken();
+    
+    if (!csrfToken) {
+        alert('Security token not found. Please refresh the page.');
+        return;
+    }
+    
+    // Send mark as read request to the correct URL
+    fetch(`/student/notifications/mark-read/${examId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({})
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
             // Reload page to reflect changes
             location.reload();
         } else {

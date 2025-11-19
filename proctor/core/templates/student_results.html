@@ -30,6 +30,14 @@
         opacity: 0.9;
     }
     
+    .search-box {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
     .stats-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -199,51 +207,140 @@
             <h2><i class="fas fa-list-alt me-2"></i>Exam History</h2>
         </div>
         
-        {% if submissions %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Exam Title</th>
-                    <th>Date</th>
-                    <th>Score</th>
-                    <th>Grade</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for submission in submissions %}
-                <tr>
-                    <td>
-                        <strong>{{ submission.exam.title }}</strong>
-                    </td>
-                    <td>{{ submission.submitted_on|date:"M d, Y H:i" }}</td>
-                    <td>
-                        <span class="score-display">{{ submission.score|floatformat:1 }}%</span>
-                    </td>
-                    <td>
-                        <span class="grade-badge grade-{{ submission.grade|lower }}">
-                            {{ submission.grade }}
-                        </span>
-                    </td>
-                    <td>
-                        <a href="{% url 'exam_review' submission.exam.id %}" class="view-btn">
-                            <i class="fas fa-eye me-1"></i>View Details
-                        </a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <div class="no-results">
-            <i class="fas fa-clipboard-list"></i>
-            <h3>No Results Yet</h3>
-            <p>You haven't completed any exams yet. Check your exams page to get started!</p>
-            <a href="{% url 'student_exams' %}" class="view-btn mt-3">
-                <i class="fas fa-arrow-right me-1"></i>Go to My Exams
-            </a>
+        <!-- Search Box (moved inside Exam History section) -->
+        <div class="search-box" style="margin: 0; border-radius: 0;">
+            <div class="row">
+                <div class="col-md-10">
+                    <input type="text" id="searchInput" class="form-control form-control-lg" placeholder="Search by exam title..." autocomplete="off">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-primary btn-lg w-100" onclick="performSearch()">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </div>
+            </div>
         </div>
-        {% endif %}
+        
+        <div id="resultsTableBody">
+            {% if submissions %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Exam Title</th>
+                        <th>Date</th>
+                        <th>Score</th>
+                        <th>Grade</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody">
+                    {% for submission in submissions %}
+                    <tr>
+                        <td>
+                            <strong>{{ submission.exam.title }}</strong>
+                        </td>
+                        <td>{{ submission.submitted_on|date:"M d, Y H:i" }}</td>
+                        <td>
+                            <span class="score-display">{{ submission.score|floatformat:1 }}%</span>
+                        </td>
+                        <td>
+                            <span class="grade-badge grade-{{ submission.grade|lower }}">
+                                {{ submission.grade }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{% url 'exam_review' submission.exam.id %}" class="view-btn">
+                                <i class="fas fa-eye me-1"></i>View Details
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="no-results">
+                <i class="fas fa-clipboard-list"></i>
+                <h3>No Results Yet</h3>
+                <p>You haven't completed any exams yet. Check your exams page to get started!</p>
+                <a href="{% url 'student_exams' %}" class="view-btn mt-3">
+                    <i class="fas fa-arrow-right me-1"></i>Go to My Exams
+                </a>
+            </div>
+            {% endif %}
+        </div>
     </div>
 </div>
+
+<script>
+let searchTimeout;
+
+function performSearch() {
+    const query = document.getElementById('searchInput').value;
+    
+    if (query.length === 0) {
+        location.reload();
+        return;
+    }
+    
+    fetch(`/api/search-student-results/?q=${encodeURIComponent(query)}`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const tbody = document.getElementById('resultsBody');
+        const tableContainer = document.getElementById('resultsTableBody');
+        
+        if (data.results && data.results.length > 0) {
+            let html = '<table><thead><tr><th>Exam Title</th><th>Date</th><th>Score</th><th>Grade</th><th>Actions</th></tr></thead><tbody>';
+            
+            data.results.forEach(result => {
+                html += `
+                    <tr>
+                        <td><strong>${result.exam_title}</strong></td>
+                        <td>${result.date}</td>
+                        <td><span class="score-display">${result.score}%</span></td>
+                        <td><span class="grade-badge grade-${result.grade.toLowerCase()}">${result.grade}</span></td>
+                        <td><a href="/student/exam-review/${result.exam_id}/" class="view-btn"><i class="fas fa-eye me-1"></i>View Details</a></td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            tableContainer.innerHTML = html;
+        } else {
+            tableContainer.innerHTML = `
+                <div class="no-results">
+                    <i class="fas fa-search"></i>
+                    <h3>No Results Found</h3>
+                    <p>No exams match your search criteria.</p>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Search error:', error);
+    });
+}
+
+// Search on input with debounce
+document.getElementById('searchInput').addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        if (this.value.length >= 2) {
+            performSearch();
+        } else if (this.value.length === 0) {
+            location.reload();
+        }
+    }, 500);
+});
+
+// Search on Enter key
+document.getElementById('searchInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        performSearch();
+    }
+});
+</script>
 {% endblock %}

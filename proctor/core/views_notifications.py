@@ -101,10 +101,22 @@ def student_notifications(request):
 
 
 @login_required
-def mark_notification_read(request, exam_id):
+def mark_notification_read(request, exam_id=None):
     """Mark an exam notification as read"""
-    if request.method == 'POST' and request.user.role == 'Student':
+    if request.user.role != 'Student':
+        return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=403)
+    
+    if request.method == 'POST':
         try:
+            # Handle both URL param and JSON body
+            if exam_id is None:
+                import json
+                data = json.loads(request.body)
+                exam_id = data.get('exam_id')
+            
+            if not exam_id:
+                return JsonResponse({'success': False, 'message': 'Exam ID required'}, status=400)
+            
             exam = Exam.objects.get(id=exam_id)
             NotificationRead.objects.get_or_create(
                 student=request.user,

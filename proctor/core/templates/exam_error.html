@@ -1,33 +1,35 @@
 {% extends 'student_base.html' %}
 
-{% block title %}Exam Error - Proctoring System{% endblock %}
+{% block title %}Cannot Access Exam - Proctoring System{% endblock %}
 
 {% block extra_css %}
 <style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
     body {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 2rem;
+        padding: 2rem 1rem;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
     
-    .error-container {
-        max-width: 600px;
+    .error-wrapper {
+        max-width: 650px;
         width: 100%;
-        background: white;
-        border-radius: 20px;
-        padding: 3rem;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        text-align: center;
-        animation: slideIn 0.5s ease;
+        animation: slideIn 0.6s ease;
     }
     
     @keyframes slideIn {
         from {
             opacity: 0;
-            transform: translateY(-50px);
+            transform: translateY(-40px);
         }
         to {
             opacity: 1;
@@ -35,150 +37,314 @@
         }
     }
     
+    .error-card {
+        background: white;
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    
+    .error-icon-section {
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+        padding: 3rem 2rem 2rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .error-icon-section::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(239, 68, 68, 0.1) 0%, transparent 70%);
+        animation: rotate 20s linear infinite;
+    }
+    
+    @keyframes rotate {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .error-icon-container {
+        position: relative;
+        z-index: 1;
+    }
+    
     .error-icon {
-        font-size: 5rem;
-        margin-bottom: 1.5rem;
-        animation: bounce 2s infinite;
-    }
-    
-    @keyframes bounce {
-        0%, 20%, 50%, 80%, 100% {
-            transform: translateY(0);
-        }
-        40% {
-            transform: translateY(-20px);
-        }
-        60% {
-            transform: translateY(-10px);
-        }
-    }
-    
-    .error-title {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #2d3e50;
+        width: 120px;
+        height: 120px;
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 4rem;
+        box-shadow: 0 10px 40px rgba(239, 68, 68, 0.4);
+        animation: pulse 2s ease-in-out infinite;
         margin-bottom: 1rem;
     }
     
+    @keyframes pulse {
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.05);
+        }
+    }
+    
+    .error-icon-section h1 {
+        font-size: 2rem;
+        color: #dc2626;
+        font-weight: 700;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .error-content {
+        padding: 2.5rem 2rem;
+    }
+    
     .error-message {
-        font-size: 1.2rem;
-        color: #64748b;
-        margin-bottom: 2rem;
-        line-height: 1.6;
-    }
-    
-    .exam-details {
-        background: #f8fafc;
-        border-radius: 12px;
+        background: #fef2f2;
+        border-left: 5px solid #ef4444;
         padding: 1.5rem;
+        border-radius: 12px;
         margin-bottom: 2rem;
-        border-left: 4px solid #667eea;
     }
     
-    .exam-details h3 {
-        color: #2d3e50;
-        margin: 0 0 0.5rem 0;
-        font-size: 1.3rem;
-    }
-    
-    .exam-details p {
-        color: #64748b;
+    .error-message p {
+        font-size: 1.15rem;
+        color: #7f1d1d;
+        line-height: 1.6;
         margin: 0;
-        font-size: 0.95rem;
+        font-weight: 500;
+    }
+    
+    .exam-info-card {
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+        border-radius: 16px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border: 2px solid #e0e7ff;
+    }
+    
+    .exam-info-card h3 {
+        color: #2d3e50;
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .exam-details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    
+    .detail-item {
+        background: white;
+        padding: 1.25rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .detail-item:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
+    }
+    
+    .detail-icon {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .detail-label {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .detail-value {
+        font-size: 1.1rem;
+        color: #2d3e50;
+        font-weight: 600;
+    }
+    
+    .action-section {
+        padding: 0 2rem 2.5rem;
     }
     
     .action-buttons {
-        display: flex;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
         gap: 1rem;
-        justify-content: center;
-        flex-wrap: wrap;
     }
     
     .btn {
-        padding: 1rem 2rem;
-        border-radius: 12px;
+        padding: 1.25rem 2rem;
+        border-radius: 16px;
         font-weight: 600;
         text-decoration: none;
-        transition: all 0.3s ease;
         border: none;
         cursor: pointer;
-        font-size: 1rem;
-        display: inline-flex;
+        font-size: 1.05rem;
+        display: flex;
         align-items: center;
-        gap: 0.5rem;
+        justify-content: center;
+        gap: 0.75rem;
+        transition: all 0.3s ease;
+        text-align: center;
     }
     
     .btn-primary {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
     }
     
     .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        color: white;
     }
     
     .btn-secondary {
-        background: #f8fafc;
+        background: white;
         color: #667eea;
         border: 2px solid #e0e7ff;
     }
     
     .btn-secondary:hover {
-        background: #e0e7ff;
-        transform: translateY(-2px);
+        background: #f8fafc;
+        border-color: #667eea;
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
+        color: #667eea;
+    }
+    
+    .help-section {
+        background: #f0fdf4;
+        border-left: 5px solid #10b981;
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin: 2rem 2rem 0;
+    }
+    
+    .help-section h4 {
+        color: #059669;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1.1rem;
+    }
+    
+    .help-section p {
+        color: #065f46;
+        margin: 0;
+        line-height: 1.6;
+        font-size: 0.95rem;
     }
     
     @media (max-width: 640px) {
-        .error-container {
-            padding: 2rem 1.5rem;
-        }
-        
         .error-icon {
-            font-size: 4rem;
+            width: 100px;
+            height: 100px;
+            font-size: 3rem;
         }
         
-        .error-title {
+        .error-icon-section h1 {
             font-size: 1.5rem;
         }
         
-        .error-message {
-            font-size: 1rem;
+        .error-content {
+            padding: 2rem 1.5rem;
+        }
+        
+        .exam-details-grid {
+            grid-template-columns: 1fr;
         }
         
         .action-buttons {
-            flex-direction: column;
+            grid-template-columns: 1fr;
         }
         
-        .btn {
-            width: 100%;
-            justify-content: center;
+        .action-section {
+            padding: 0 1.5rem 2rem;
         }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="error-container">
-    <div class="error-icon">⚠️</div>
-    <h1 class="error-title">Cannot Access Exam</h1>
-    <p class="error-message">{{ error_message }}</p>
-    
-    <div class="exam-details">
-        <h3>{{ exam.title }}</h3>
-        <p>📅 {{ exam.date|date:"F d, Y" }} at {{ exam.date|time:"H:i" }}</p>
-        <p>⏱️ Duration: {{ exam.duration_minutes }} minutes</p>
-    </div>
-    
-    <div class="action-buttons">
-        <a href="{{ redirect_url }}" class="btn btn-primary">
-            <i class="fas fa-arrow-right"></i>
-            {{ redirect_text }}
-        </a>
-        <a href="/student/exams/" class="btn btn-secondary">
-            <i class="fas fa-list"></i>
-            All Exams
-        </a>
+<div class="error-wrapper">
+    <div class="error-card">
+        <!-- Error Icon Section -->
+        <div class="error-icon-section">
+            <div class="error-icon-container">
+                <div class="error-icon">⚠️</div>
+                <h1>Cannot Access Exam</h1>
+            </div>
+        </div>
+        
+        <!-- Error Content -->
+        <div class="error-content">
+            <div class="error-message">
+                <p>{{ error_message }}</p>
+            </div>
+            
+            <!-- Exam Information Card -->
+            <div class="exam-info-card">
+                <h3>📚 {{ exam.title }}</h3>
+                <div class="exam-details-grid">
+                    <div class="detail-item">
+                        <div class="detail-icon">📅</div>
+                        <div class="detail-label">Date</div>
+                        <div class="detail-value">{{ exam.date|date:"M d, Y" }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-icon">⏰</div>
+                        <div class="detail-label">Time</div>
+                        <div class="detail-value">{{ exam.date|time:"g:i A" }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-icon">⏱️</div>
+                        <div class="detail-label">Duration</div>
+                        <div class="detail-value">{{ exam.duration_minutes }} min</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="action-section">
+            <div class="action-buttons">
+                <a href="{{ redirect_url }}" class="btn btn-primary">
+                    <i class="fas fa-arrow-right"></i>
+                    {{ redirect_text }}
+                </a>
+                <a href="/student/exams/" class="btn btn-secondary">
+                    <i class="fas fa-list"></i>
+                    All Exams
+                </a>
+            </div>
+        </div>
+        
+        <!-- Help Section -->
+        <div class="help-section">
+            <h4><i class="fas fa-info-circle"></i> Need Help?</h4>
+            <p>If you believe this is an error or need assistance, please contact your instructor or administrator.</p>
+        </div>
     </div>
 </div>
 {% endblock %}

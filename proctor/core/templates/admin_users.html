@@ -6,8 +6,11 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i class="fas fa-users me-2"></i>User Management</h2>
     <div class="btn-group">
+        <a href="{% url 'admin_user_import_guide' %}" class="btn btn-info" target="_blank">
+            <i class="fas fa-book me-2"></i>Import Guide
+        </a>
         <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#importUsersModal">
-            <i class="fas fa-file-import me-2"></i>Import from Sheets
+            <i class="fas fa-file-import me-2"></i>Import from File
         </button>
         <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
             <i class="fas fa-plus me-2"></i>Add New User
@@ -18,29 +21,29 @@
 <!-- Filter and Search -->
 <div class="card mb-4">
     <div class="card-body">
-        <form method="get" class="row g-3">
+        <div class="row g-3">
             <div class="col-md-3">
                 <label class="form-label">Role Filter</label>
-                <select name="role" class="form-select">
+                <select name="role" id="roleFilter" class="form-select">
                     <option value="">All Roles</option>
-                    <option value="Student" {% if request.GET.role == 'Student' %}selected{% endif %}>Student</option>
-                    <option value="Faculty" {% if request.GET.role == 'Faculty' %}selected{% endif %}>Faculty</option>
-                    <option value="Admin" {% if request.GET.role == 'Admin' %}selected{% endif %}>Admin</option>
+                    <option value="Student">Student</option>
+                    <option value="Faculty">Faculty</option>
+                    <option value="Admin">Admin</option>
                 </select>
             </div>
             <div class="col-md-6">
                 <label class="form-label">Search</label>
-                <input type="text" name="search" class="form-control" placeholder="Search by username, email, or name" value="{{ request.GET.search }}">
+                <input type="text" id="searchInput" class="form-control" placeholder="Search by username, email, or name" autocomplete="off">
             </div>
             <div class="col-md-3">
                 <label class="form-label">&nbsp;</label>
                 <div class="d-grid">
-                    <button type="submit" class="btn btn-outline-primary">
-                        <i class="fas fa-search me-2"></i>Filter
+                    <button type="button" class="btn btn-outline-primary" onclick="performSearch()">
+                        <i class="fas fa-search me-2"></i>Search
                     </button>
                 </div>
             </div>
-        </form>
+        </div>
     </div>
 </div>
 
@@ -61,7 +64,7 @@
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="usersTableBody">
                     {% for user in users %}
                     <tr>
                         <td>
@@ -224,25 +227,41 @@
 <div class="modal fade" id="importUsersModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Import Users from Sheets</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-file-import me-2"></i>Import Users from File</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form method="post" action="{% url 'admin_import_users' %}">
+            <form method="post" action="{% url 'admin_import_users' %}" enctype="multipart/form-data">
                 {% csrf_token %}
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Sheet URL *</label>
-                        <input type="text" name="sheet_url" class="form-control" required>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Need help?</strong> Check out our <a href="{% url 'admin_user_import_guide' %}" target="_blank" class="alert-link">User Import Guide</a> for detailed instructions.
                     </div>
+                    
                     <div class="mb-3">
-                        <label class="form-label">Range *</label>
-                        <input type="text" name="range" class="form-control" required>
+                        <label class="form-label">Upload CSV or Excel File *</label>
+                        <input type="file" name="user_file" class="form-control" accept=".csv,.xlsx,.xls" required>
+                        <small class="text-muted">Accepted formats: CSV, Excel (.xlsx, .xls)</small>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <strong>Required Columns:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>username</li>
+                            <li>email</li>
+                            <li>password</li>
+                            <li>role (Student, Faculty, or Admin)</li>
+                            <li>first_name (optional)</li>
+                            <li>last_name (optional)</li>
+                        </ul>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Import Users</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-upload me-2"></i>Import Users
+                    </button>
                 </div>
             </form>
         </div>
@@ -250,9 +269,98 @@
 </div>
 
 <script>
+let searchTimeout;
+
+function performSearch() {
+    const query = document.getElementById('searchInput').value;
+    const role = document.getElementById('roleFilter').value;
+    
+    const params = new URLSearchParams();
+    if (query) params.append('q', query);
+    if (role) params.append('role', role);
+    
+    fetch(`/api/admin/search-users/?${params.toString()}`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const tbody = document.getElementById('usersTableBody');
+        
+        if (data.users && data.users.length > 0) {
+            let html = '';
+            
+            data.users.forEach(user => {
+                const roleClass = user.role === 'Admin' ? 'danger' : (user.role === 'Faculty' ? 'warning' : 'primary');
+                const statusClass = user.is_active ? 'success' : 'secondary';
+                const statusText = user.is_active ? 'Active' : 'Inactive';
+                
+                html += `
+                    <tr>
+                        <td><strong>${user.username}</strong></td>
+                        <td>${user.first_name || ''} ${user.last_name || ''}</td>
+                        <td>${user.email}</td>
+                        <td><span class="badge bg-${roleClass}">${user.role}</span></td>
+                        <td>${user.date_joined}</td>
+                        <td>${user.last_login || '<span class="text-muted">Never</span>'}</td>
+                        <td><span class="badge bg-${statusClass}">${statusText}</span></td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="/customadmin/users/${user.id}/" class="btn btn-outline-info" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <button class="btn btn-outline-warning" onclick="editUser(${user.id})" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-outline-danger" onclick="deleteUser(${user.id})" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tbody.innerHTML = html;
+        } else {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">
+                        <i class="fas fa-search fa-3x mb-3"></i>
+                        <p>No users found matching your criteria.</p>
+                    </td>
+                </tr>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Search error:', error);
+    });
+}
+
+// Search on input with debounce
+document.getElementById('searchInput').addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        if (this.value.length >= 2 || this.value.length === 0) {
+            performSearch();
+        }
+    }, 500);
+});
+
+// Role filter change
+document.getElementById('roleFilter').addEventListener('change', performSearch);
+
+// Search on Enter key
+document.getElementById('searchInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        performSearch();
+    }
+});
+
 function editUser(userId) {
-    // Redirect to edit page
-    window.location.href = `/customadmin/users/${userId}/edit/`;
+    window.location.href = `/customadmin/users/${userId}/`;
 }
 
 function deleteUser(userId) {

@@ -1,0 +1,460 @@
+{% extends 'admin_base.html' %}
+{% load static %}
+
+{% block title %}User Import Guide - Admin Panel{% endblock %}
+
+{% block extra_css %}
+<style>
+    .guide-container {
+        max-width: 1000px;
+        margin: 2rem auto;
+        padding: 2rem;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        box-shadow: 0 8px 32px rgba(44, 62, 80, 0.15);
+    }
+    
+    .guide-header {
+        text-align: center;
+        margin-bottom: 3rem;
+        padding-bottom: 2rem;
+        border-bottom: 3px solid #e0e7ff;
+    }
+    
+    .guide-header h1 {
+        font-size: 2.5rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem;
+    }
+    
+    .guide-header p {
+        font-size: 1.2rem;
+        color: #6b7280;
+    }
+    
+    .download-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+        border-radius: 15px;
+        text-align: center;
+        margin-bottom: 3rem;
+        color: white;
+    }
+    
+    .download-section h2 {
+        font-size: 1.8rem;
+        margin-bottom: 1rem;
+    }
+    
+    .download-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: white;
+        color: #667eea;
+        padding: 1rem 2rem;
+        border-radius: 50px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        margin-top: 1rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .download-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
+        color: #764ba2;
+    }
+    
+    .download-btn i {
+        font-size: 1.5rem;
+    }
+    
+    .steps-section {
+        margin-top: 2rem;
+    }
+    
+    .step {
+        background: #f8fafc;
+        border-left: 5px solid #667eea;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+    }
+    
+    .step:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.15);
+    }
+    
+    .step-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 50%;
+        font-weight: 700;
+        font-size: 1.3rem;
+        margin-right: 1rem;
+    }
+    
+    .step-title {
+        display: flex;
+        align-items: center;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2d3e50;
+        margin-bottom: 1rem;
+    }
+    
+    .step-content {
+        margin-left: 3.5rem;
+        color: #4b5563;
+        line-height: 1.8;
+        font-size: 1.05rem;
+    }
+    
+    .code-block {
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
+        margin: 1rem 0;
+        overflow-x: auto;
+        font-size: 0.95rem;
+    }
+    
+    .warning-box {
+        background: #fef2f2;
+        border-left: 5px solid #ef4444;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin: 2rem 0;
+    }
+    
+    .warning-box h3 {
+        color: #dc2626;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .warning-box p {
+        color: #7f1d1d;
+        margin: 0;
+        line-height: 1.6;
+    }
+    
+    .success-box {
+        background: #f0fdf4;
+        border-left: 5px solid #10b981;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin: 2rem 0;
+    }
+    
+    .success-box h3 {
+        color: #059669;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .success-box p {
+        color: #065f46;
+        margin: 0;
+        line-height: 1.6;
+    }
+    
+    .template-preview {
+        background: white;
+        border: 2px solid #e0e7ff;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+    }
+    
+    .template-preview h4 {
+        color: #2d3e50;
+        margin-bottom: 1rem;
+        font-size: 1.2rem;
+    }
+    
+    .template-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+    
+    .template-table th {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.75rem;
+        text-align: left;
+        font-weight: 600;
+    }
+    
+    .template-table td {
+        padding: 0.75rem;
+        border: 1px solid #e0e7ff;
+    }
+    
+    .template-table tr:nth-child(even) {
+        background: #f8fafc;
+    }
+    
+    .back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+        color: #667eea;
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        margin-top: 2rem;
+    }
+    
+    .back-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    
+    @media (max-width: 768px) {
+        .guide-container {
+            padding: 1rem;
+        }
+        
+        .guide-header h1 {
+            font-size: 2rem;
+        }
+        
+        .step-content {
+            margin-left: 0;
+        }
+        
+        .step-title {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .step-number {
+            margin-bottom: 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="guide-container">
+    <div class="guide-header">
+        <h1>👥 Bulk User Import Guide</h1>
+        <p>Learn how to import multiple users at once</p>
+    </div>
+    
+    <div class="download-section">
+        <h2>📥 Download User Template</h2>
+        <p>Start by downloading our pre-formatted template</p>
+        <a href="{% url 'download_user_template' %}" class="download-btn">
+            <i class="fas fa-download"></i>
+            Download UsersTemplate.xlsx
+        </a>
+    </div>
+    
+    <div class="steps-section">
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">1</span>
+                Prepare Your User Data
+            </div>
+            <div class="step-content">
+                <p>The template has the following structure:</p>
+                <div class="template-preview">
+                    <h4>Template Format</h4>
+                    <table class="template-table">
+                        <thead>
+                            <tr>
+                                <th>username</th>
+                                <th>email</th>
+                                <th>password</th>
+                                <th>role</th>
+                                <th>first_name</th>
+                                <th>last_name</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>john_doe</td>
+                                <td>john@example.com</td>
+                                <td>Pass@1234</td>
+                                <td>Student</td>
+                                <td>John</td>
+                                <td>Doe</td>
+                            </tr>
+                            <tr>
+                                <td>jane_smith</td>
+                                <td>jane@example.com</td>
+                                <td>Secure@5678</td>
+                                <td>Faculty</td>
+                                <td>Jane</td>
+                                <td>Smith</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="warning-box">
+                    <h3><i class="fas fa-exclamation-triangle"></i> Important Rules</h3>
+                    <p>
+                        • <strong>Do NOT</strong> change column headers<br>
+                        • <strong>Required fields:</strong> username, email, password, role<br>
+                        • <strong>Optional fields:</strong> first_name, last_name<br>
+                        • Role must be: <strong>Student</strong>, <strong>Faculty</strong>, or <strong>Admin</strong> (case-sensitive)<br>
+                        • Each username and email must be unique<br>
+                        • Use strong passwords (minimum 8 characters recommended)
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">2</span>
+                Fill in User Information
+            </div>
+            <div class="step-content">
+                <p>For each user you want to add:</p>
+                <ul>
+                    <li><strong>username:</strong> A unique identifier for login (alphanumeric, underscores allowed)</li>
+                    <li><strong>email:</strong> A valid email address</li>
+                    <li><strong>password:</strong> The initial password for the user</li>
+                    <li><strong>role:</strong> Must be exactly <code>Student</code>, <code>Faculty</code>, or <code>Admin</code></li>
+                    <li><strong>first_name:</strong> User's first name (optional but recommended)</li>
+                    <li><strong>last_name:</strong> User's last name (optional but recommended)</li>
+                </ul>
+                <div class="success-box">
+                    <h3><i class="fas fa-lightbulb"></i> Pro Tip</h3>
+                    <p>
+                        You can import hundreds of users at once! Just add more rows to the template.
+                        The system will validate each entry and skip duplicates automatically.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">3</span>
+                Save as CSV or Excel
+            </div>
+            <div class="step-content">
+                <p>Once you've filled in all user data:</p>
+                <ul>
+                    <li>Save the file as <strong>CSV</strong> (.csv) or keep it as <strong>Excel</strong> (.xlsx, .xls)</li>
+                    <li>Both formats are supported by the system</li>
+                    <li>Make sure there are no empty rows between user entries</li>
+                </ul>
+                <div class="warning-box">
+                    <h3><i class="fas fa-info-circle"></i> CSV vs Excel</h3>
+                    <p>
+                        <strong>CSV:</strong> Simple text format, works everywhere<br>
+                        <strong>Excel:</strong> Keeps formatting, easier to edit<br>
+                        Both work perfectly with our import system!
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">4</span>
+                Upload to System
+            </div>
+            <div class="step-content">
+                <p>Go to the <strong>User Management</strong> page and:</p>
+                <ol>
+                    <li>Click the <strong>"Import from File"</strong> button</li>
+                    <li>In the modal, click <strong>"Choose File"</strong></li>
+                    <li>Select your prepared CSV or Excel file</li>
+                    <li>Click <strong>"Import Users"</strong></li>
+                </ol>
+                <div class="success-box">
+                    <h3><i class="fas fa-check-circle"></i> What Happens Next?</h3>
+                    <p>
+                        The system will:<br>
+                        • Validate all user data<br>
+                        • Check for duplicates<br>
+                        • Create all valid users<br>
+                        • Show you a summary of imported users<br>
+                        • Report any errors or skipped entries
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="step">
+            <div class="step-title">
+                <span class="step-number">5</span>
+                Verify Imported Users
+            </div>
+            <div class="step-content">
+                <p>After import:</p>
+                <ul>
+                    <li>Check the success message for import statistics</li>
+                    <li>Use the search function to verify users were created</li>
+                    <li>Filter by role to see all newly imported users</li>
+                    <li>Users can now log in with their imported credentials</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div class="warning-box">
+        <h3><i class="fas fa-info-circle"></i> Troubleshooting</h3>
+        <p>
+            <strong>If the import fails:</strong><br>
+            • Check that column headers match exactly (case-sensitive)<br>
+            • Ensure role values are exactly: Student, Faculty, or Admin<br>
+            • Verify all usernames and emails are unique<br>
+            • Make sure there are no special characters in usernames<br>
+            • Check that email addresses are valid<br>
+            <br>
+            <strong>Common Errors:</strong><br>
+            • "Duplicate username" - That username already exists in the system<br>
+            • "Invalid role" - Role must be Student, Faculty, or Admin (exact case)<br>
+            • "Missing required field" - username, email, password, or role is empty<br>
+            • "Invalid email format" - Email address is not properly formatted
+        </p>
+    </div>
+    
+    <div class="success-box">
+        <h3><i class="fas fa-users"></i> Bulk Operations</h3>
+        <p>
+            <strong>Best Practices:</strong><br>
+            • Test with a small file first (5-10 users) to ensure format is correct<br>
+            • Keep a backup of your import file<br>
+            • Generate strong, unique passwords for each user<br>
+            • Inform users of their credentials securely after import<br>
+            • Consider sending password reset links for users to set their own passwords
+        </p>
+    </div>
+    
+    <a href="{% url 'admin_users' %}" class="back-btn">
+        <i class="fas fa-arrow-left"></i>
+        Back to User Management
+    </a>
+</div>
+{% endblock %}
