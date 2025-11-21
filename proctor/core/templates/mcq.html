@@ -701,12 +701,219 @@ document.addEventListener('DOMContentLoaded', function() {
     let freezeCountdownInterval = null;
     let warningLimit = {{ exam.warning_limit }};
     let absenceThreshold = {{ exam.absence_threshold }};
+    
+    // Tab switching tracking
+    let tabSwitchCount = 0;
+    let isExamActive = false;
+    let lastVisibilityChange = Date.now();
 
     // Get CSRF token from form
     function getCSRFToken() {
         const tokenElement = document.querySelector('[name=csrfmiddlewaretoken]');
         return tokenElement ? tokenElement.value : '';
     }
+
+    // ========== TAB SWITCHING DETECTION ==========
+    
+    // Detect when user switches tabs or minimizes window
+    document.addEventListener('visibilitychange', function() {
+        if (!isExamActive) return;
+        
+        if (document.hidden) {
+            // User switched away from exam tab
+            const now = Date.now();
+            // Prevent duplicate events within 500ms
+            if (now - lastVisibilityChange < 500) return;
+            lastVisibilityChange = now;
+            
+            tabSwitchCount++;
+            console.warn(`Tab switch detected! Count: ${tabSwitchCount}`);
+            
+            // Log violation
+            logViolation('Tab Switch', `Student switched away from exam tab (Count: ${tabSwitchCount})`);
+            
+            // Show warning notification
+            showNotification(`⚠️ Warning: Tab switching detected! (${tabSwitchCount} times)`, 'error');
+            
+            // Update status indicator
+            statusIndicator.classList.remove('success');
+            statusIndicator.classList.add('error');
+            examStatusText.textContent = `Tab Switch Detected! (${tabSwitchCount})`;
+            
+        } else {
+            // User returned to exam tab
+            if (tabSwitchCount > 0) {
+                showNotification('Please keep this tab focused during the exam.', 'warning');
+            }
+        }
+    });
+    
+    // Detect window blur (when user clicks outside browser)
+    window.addEventListener('blur', function() {
+        if (!isExamActive) return;
+        
+        const now = Date.now();
+        if (now - lastVisibilityChange < 500) return;
+        lastVisibilityChange = now;
+        
+        tabSwitchCount++;
+        console.warn(`Window blur detected! Count: ${tabSwitchCount}`);
+        
+        logViolation('Window Blur', `Student navigated away from exam window (Count: ${tabSwitchCount})`);
+        showNotification(`⚠️ Warning: Do not leave the exam window! (${tabSwitchCount} times)`, 'error');
+    });
+    
+    // Detect window focus restoration
+    window.addEventListener('focus', function() {
+        if (!isExamActive) return;
+        
+        if (tabSwitchCount > 0) {
+            showNotification('Stay focused on the exam. Tab switching is being monitored.', 'warning');
+            
+            // Restore status if no other issues
+            setTimeout(() => {
+                if (!document.hidden) {
+                    statusIndicator.classList.remove('error');
+                    statusIndicator.classList.add('success');
+                    examStatusText.textContent = 'Monitoring Active';
+                }
+            }, 2000);
+        }
+    });
+    
+    // Detect keyboard shortcuts for switching tabs
+    document.addEventListener('keydown', function(e) {
+        if (!isExamActive) return;
+        
+        // Detect Ctrl+Tab, Alt+Tab, Cmd+Tab attempts
+        if ((e.ctrlKey && e.key === 'Tab') || 
+            (e.altKey && e.key === 'Tab') || 
+            (e.metaKey && e.key === 'Tab')) {
+            e.preventDefault();
+            showNotification('⚠️ Tab switching is disabled during the exam!', 'error');
+            logViolation('Tab Switch Attempt', 'Student attempted to switch tabs using keyboard shortcut');
+            return false;
+        }
+        
+        // Detect Alt+F4 (close window attempt)
+        if (e.altKey && e.key === 'F4') {
+            e.preventDefault();
+            showNotification('⚠️ You cannot close the window during the exam!', 'error');
+            logViolation('Close Window Attempt', 'Student attempted to close exam window');
+            return false;
+        }
+        
+        // Detect F11 (fullscreen toggle)
+        if (e.key === 'F11') {
+            e.preventDefault();
+            showNotification('Fullscreen mode changes are disabled.', 'warning');
+            return false;
+        }
+        
+        // Detect Ctrl+W (close tab)
+        if (e.ctrlKey && e.key === 'w') {
+            e.preventDefault();
+            showNotification('⚠️ You cannot close this tab during the exam!', 'error');
+            logViolation('Close Tab Attempt', 'Student attempted to close exam tab');
+            return false;
+        }
+        
+        // Detect Ctrl+N (new window)
+        if (e.ctrlKey && e.key === 'n') {
+            e.preventDefault();
+            showNotification('⚠️ Opening new windows is disabled!', 'error');
+            logViolation('New Window Attempt', 'Student attempted to open new window');
+            return false;
+        }
+        
+        // Detect Ctrl+T (new tab)
+        if (e.ctrlKey && e.key === 't') {
+            e.preventDefault();
+            showNotification('⚠️ Opening new tabs is disabled!', 'error');
+            logViolation('New Tab Attempt', 'Student attempted to open new tab');
+            return false;
+        }
+        
+        // Detect Ctrl+Shift+N (incognito window)
+        if (e.ctrlKey && e.shiftKey && e.key === 'N') {
+            e.preventDefault();
+            showNotification('⚠️ Opening incognito windows is disabled!', 'error');
+            logViolation('Incognito Attempt', 'Student attempted to open incognito window');
+            return false;
+        }
+        
+        // Detect F12, Ctrl+Shift+I (Developer tools)
+        if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) {
+            e.preventDefault();
+            showNotification('⚠️ Developer tools are disabled!', 'error');
+            logViolation('DevTools Attempt', 'Student attempted to open developer tools');
+            return false;
+        }
+        
+        // Detect right-click context menu (handled separately)
+        // Prevent Ctrl+U (view source)
+        if (e.ctrlKey && e.key === 'u') {
+            e.preventDefault();
+            showNotification('⚠️ Viewing page source is disabled!', 'error');
+            return false;
+        }
+    });
+    
+    // Disable right-click context menu
+    document.addEventListener('contextmenu', function(e) {
+        if (isExamActive) {
+            e.preventDefault();
+            showNotification('Right-click is disabled during the exam.', 'warning');
+            return false;
+        }
+    });
+    
+    // Detect mouse leaving window (potential tab switch)
+    let mouseLeftWindow = false;
+    document.addEventListener('mouseleave', function(e) {
+        if (!isExamActive) return;
+        
+        // Check if mouse actually left the document
+        if (e.clientY <= 0 || e.clientX <= 0 || 
+            e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
+            mouseLeftWindow = true;
+        }
+    });
+    
+    document.addEventListener('mouseenter', function() {
+        if (!isExamActive) return;
+        mouseLeftWindow = false;
+    });
+    
+    // Request fullscreen mode (optional but recommended)
+    function requestFullscreen() {
+        const elem = document.documentElement;
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen().catch(err => {
+                console.log('Fullscreen request failed:', err);
+                showNotification('For best experience, allow fullscreen mode.', 'warning');
+            });
+        }
+    }
+    
+    // Detect fullscreen exit
+    document.addEventListener('fullscreenchange', function() {
+        if (!isExamActive) return;
+        
+        if (!document.fullscreenElement) {
+            showNotification('⚠️ Please stay in fullscreen mode during the exam.', 'warning');
+            logViolation('Fullscreen Exit', 'Student exited fullscreen mode');
+            
+            // Optionally re-request fullscreen
+            setTimeout(() => {
+                if (isExamActive && !document.fullscreenElement) {
+                    // requestFullscreen();
+                }
+            }, 2000);
+        }
+    });
+    
+    // ========== END TAB SWITCHING DETECTION ==========
 
     // Camera initialization with face detection
     async function initializeCamera() {
@@ -825,6 +1032,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 clearInterval(faceDetectionSetupInterval);
             }
             
+            // Enable exam monitoring
+            isExamActive = true;
+            
+            // Optional: Request fullscreen
+            // requestFullscreen();
+            
+            // Show initial warning about tab switching
+            setTimeout(() => {
+                showNotification('⚠️ Warning: Tab switching and window changes are being monitored!', 'warning');
+            }, 2000);
+            
             startTimer();
             
             // Start distraction detection after delay
@@ -920,15 +1138,17 @@ document.addEventListener('DOMContentLoaded', function() {
             padding: 1rem 1.5rem;
             border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
+            z-index: 10001;
             font-weight: 600;
             max-width: 300px;
+            animation: slideIn 0.3s ease-out;
         `;
         notification.textContent = message;
         document.body.appendChild(notification);
         
         setTimeout(() => {
-            notification.remove();
+            notification.style.animation = 'slideOut 0.3s ease-in';
+            setTimeout(() => notification.remove(), 300);
         }, 4000);
     }
 
@@ -1003,6 +1223,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     details: details
                 })
             });
+            console.log(`Violation logged: ${type} - ${details}`);
         } catch (error) {
             console.error('Error logging violation:', error);
         }
@@ -1016,6 +1237,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Cleanup function to stop camera
     function cleanupCamera() {
+        isExamActive = false;
+        
         if (stream) {
             stream.getTracks().forEach(track => track.stop());
             stream = null;
@@ -1027,6 +1250,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (faceDetectionSetupInterval) {
             clearInterval(faceDetectionSetupInterval);
             faceDetectionSetupInterval = null;
+        }
+        
+        // Exit fullscreen if active
+        if (document.fullscreenElement) {
+            document.exitFullscreen().catch(err => console.log('Exit fullscreen error:', err));
         }
     }
     
@@ -1057,6 +1285,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Log violation when student leaves exam
     window.addEventListener('beforeunload', (e) => {
+        if (!isExamActive) return;
+        
         e.preventDefault();
         e.returnValue = 'Are you sure you want to leave the exam? Your progress will be lost.';
         
@@ -1064,7 +1294,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const violationData = JSON.stringify({
             exam_id: '{{ exam.id }}',
             violation_type: 'Left Exam',
-            details: 'Student left the exam page'
+            details: `Student left the exam page (Tab switches: ${tabSwitchCount})`
         });
         
         // Use sendBeacon for reliable data transmission even during page unload
@@ -1073,15 +1303,7 @@ document.addEventListener('DOMContentLoaded', function() {
         navigator.sendBeacon('/log-violation/?csrfmiddlewaretoken=' + csrfToken, blob);
         
         // Cleanup
-        if (distractionCheckInterval) {
-            clearInterval(distractionCheckInterval);
-        }
-        if (freezeCountdownInterval) {
-            clearInterval(freezeCountdownInterval);
-        }
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-        }
+        cleanupCamera();
     });
 
     // Timer functionality
@@ -1193,6 +1415,9 @@ document.addEventListener('DOMContentLoaded', function() {
     async function submitExam(event) {
         event.preventDefault();
         
+        // Disable exam monitoring before submission
+        isExamActive = false;
+        
         // Stop auto-save
         if (autoSaveInterval) {
             clearInterval(autoSaveInterval);
@@ -1206,6 +1431,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Collect all answers
         const answers = collectAllAnswers();
         
+        // Include tab switch count in submission
+        answers._tabSwitchCount = tabSwitchCount;
+        
         try {
             const response = await fetch('/student/submit-exam/{{ exam.id }}/', {
                 method: 'POST',
@@ -1213,34 +1441,67 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': getCSRFToken()
                 },
-                body: JSON.stringify({ answers: answers })
+                body: JSON.stringify({ 
+                    answers: answers,
+                    tab_switch_count: tabSwitchCount
+                })
             });
             
             const data = await response.json();
             
             if (data.success) {
+                // Log final statistics
+                if (tabSwitchCount > 0) {
+                    logViolation('Exam Submitted', `Total tab switches during exam: ${tabSwitchCount}`);
+                }
+                
                 // Stop monitoring
-                if (distractionCheckInterval) {
-                    clearInterval(distractionCheckInterval);
-                }
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                }
+                cleanupCamera();
                 
                 // Redirect to feedback page (or results if no redirect_url)
                 window.location.href = data.redirect_url || '/student/exam-results/{{ exam.id }}/';
             } else {
+                // Re-enable monitoring if submission failed
+                isExamActive = true;
                 alert('Error submitting exam: ' + (data.error || 'Unknown error'));
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalText;
             }
         } catch (error) {
+            // Re-enable monitoring if submission failed
+            isExamActive = true;
             console.error('Error:', error);
             alert('Failed to submit exam. Please try again.');
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalText;
         }
     }
+    
+    // Add CSS animations for notifications
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+    `;
+    document.head.appendChild(style);
 });
 </script>
 {% endblock %}

@@ -112,8 +112,11 @@ def mark_notification_read(request, exam_id=None):
         try:
             # Handle both URL param and JSON body
             if exam_id is None:
-                data = json.loads(request.body)
-                exam_id = data.get('exam_id')
+                try:
+                    data = json.loads(request.body)
+                    exam_id = data.get('exam_id')
+                except json.JSONDecodeError:
+                    return JsonResponse({'success': False, 'message': 'Invalid JSON data'}, status=400)
             
             if not exam_id:
                 return JsonResponse({'success': False, 'message': 'Exam ID required'}, status=400)
@@ -124,21 +127,30 @@ def mark_notification_read(request, exam_id=None):
             except (ValueError, TypeError):
                 return JsonResponse({'success': False, 'message': 'Invalid exam ID format'}, status=400)
             
-            exam = Exam.objects.get(id=exam_id)
-            NotificationRead.objects.get_or_create(
+            # Verify exam exists
+            try:
+                exam = Exam.objects.get(id=exam_id)
+            except Exam.DoesNotExist:
+                return JsonResponse({'success': False, 'message': 'Exam not found'}, status=404)
+            
+            # Create or update notification read status
+            notification, created = NotificationRead.objects.get_or_create(
                 student=request.user,
                 exam=exam
             )
-            return JsonResponse({'success': True, 'message': 'Notification marked as read'})
-        except Exam.DoesNotExist:
-            return JsonResponse({'success': False, 'message': 'Exam not found'}, status=404)
-        except json.JSONDecodeError as e:
-            return JsonResponse({'success': False, 'message': f'Invalid JSON: {str(e)}'}, status=400)
+            
+            return JsonResponse({
+                'success': True, 
+                'message': 'Notification marked as read',
+                'exam_id': exam_id
+            })
+            
         except Exception as e:
+            import traceback
             traceback.print_exc()
             return JsonResponse({'success': False, 'message': f'Server error: {str(e)}'}, status=500)
     
-    return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=400)
+    return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=405)
 
 
 @login_required
