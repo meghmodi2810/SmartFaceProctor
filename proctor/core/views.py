@@ -1025,7 +1025,7 @@ def faculty_results(request):
 	# Optional search
 	query = request.GET.get('q', '').strip()
 	if query:
-		exams_qs = exams_qs.filter(title__icontains=query)
+		exams_qs = exams_qs.filter(title__icontains(query))
 	
 	# Precompute stats efficiently
 	from django.db.models import Count, Avg, Max, Min
@@ -1836,8 +1836,23 @@ def submit_exam(request, exam_id):
             logger.warning(f"Student {user.id} tried to submit exam {exam_id} twice")
             return JsonResponse({'success': False, 'error': 'You have already submitted this exam'})
         
-        # Calculate score based on correct answers
+        # Get answers from request
         answers = data.get('answers', {})
+        
+        # **FIX: Save answers to ExamProgress BEFORE calculating score**
+        from .models import ExamProgress
+        try:
+            progress, created = ExamProgress.objects.update_or_create(
+                exam=exam,
+                student=user,
+                defaults={'answers': answers}
+            )
+            logger.info(f"Answers saved to ExamProgress: {len(answers)} questions")
+        except Exception as e:
+            logger.error(f"Error saving to ExamProgress: {e}")
+            # Continue anyway - don't fail submission
+        
+        # Calculate score based on correct answers
         questions = Question.objects.filter(exam=exam)
         correct_count = 0
         total_questions = questions.count()
@@ -1850,10 +1865,9 @@ def submit_exam(request, exam_id):
                 if student_answer == question.answer:
                     correct_count += 1
         
-        # Calculate percentage score based on attempted questions
-        # If no questions attempted, score is 0
-        if attempted_count > 0:
-            score = (correct_count / attempted_count * 100)
+        # Calculate percentage score based on total questions (not attempted)
+        if total_questions > 0:
+            score = (correct_count / total_questions * 100)
         else:
             score = 0
         
@@ -1864,7 +1878,7 @@ def submit_exam(request, exam_id):
                 student=user,
                 score=score
             )
-            logger.info(f"Submission created: student={user.id}, exam={exam_id}, score={score}")
+            logger.info(f"Submission created: student={user.id}, exam={exam_id}, score={score}, correct={correct_count}/{total_questions}")
         except Exception as e:
             logger.error(f"Error creating submission: {e}")
             return JsonResponse({'success': False, 'error': 'Failed to save submission'})
@@ -1920,7 +1934,6 @@ def submit_exam(request, exam_id):
     except Exception as e:
         logger.error(f"Unexpected error in submit_exam: {e}", exc_info=True)
         return JsonResponse({'success': False, 'error': f'An error occurred: {str(e)}'})
-
 
 @login_required
 def save_progress(request):
@@ -1978,7 +1991,6 @@ def save_progress(request):
         logger = logging.getLogger(__name__)
         logger.error(f"Error saving progress: {e}", exc_info=True)
         return JsonResponse({'success': False, 'error': 'Failed to save progress'})
-
 
 def test_otp_system(request):
 	"""Test view to debug OTP system"""
@@ -2102,14 +2114,17 @@ def get_semesters_api(request):
     
     try:
         department = Department.objects.get(id=department_id, is_active=True)
-        semesters = Semester.objects.filter(department=department, is_active=True).order_by('name')
-        semesters_data = [{'id': s.id, 'name': s.name} for s in semesters]
+        try:
+            from .models import Semester as _Semester
+            semesters = _Semester.objects.filter(department=department, is_active=True).order_by('name')
+            semesters_data = [{'id': s.id, 'name': s.name} for s in semesters]
+        except Exception:
+            semesters_data = []
         return JsonResponse({'semesters': semesters_data})
     except Department.DoesNotExist:
         return JsonResponse({'error': 'Department not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
 
 def get_divisions_api(request):
     """API endpoint to get divisions for a department (optionally filtered by semester)"""
@@ -2122,19 +2137,20 @@ def get_divisions_api(request):
     
     try:
         department = Department.objects.get(id=department_id, is_active=True)
-        divisions_query = Division.objects.filter(department=department, is_active=True)
-        
-        if semester_id:
-            divisions_query = divisions_query.filter(semester_id=semester_id)
-        
-        divisions = divisions_query.order_by('name')
-        divisions_data = [{'id': d.id, 'name': d.name} for d in divisions]
+        try:
+            from .models import Division as _Division
+            divisions_query = _Division.objects.filter(department=department, is_active=True)
+            if semester_id:
+                divisions_query = divisions_query.filter(semester_id=semester_id)
+            divisions = divisions_query.order_by('name')
+            divisions_data = [{'id': d.id, 'name': d.name} for d in divisions]
+        except Exception:
+            divisions_data = []
         return JsonResponse({'divisions': divisions_data})
     except Department.DoesNotExist:
         return JsonResponse({'error': 'Department not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
 
 def check_migration(request):
 	"""Check if PasswordResetOTP model exists in database"""
@@ -2710,7 +2726,6 @@ def get_semesters_api(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-
 def get_divisions_api(request):
     """API endpoint to get divisions for a department (optionally filtered by semester)"""
     from django.http import JsonResponse
@@ -2736,7 +2751,6 @@ def get_divisions_api(request):
         return JsonResponse({'error': 'Department not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
 
 def check_migration(request):
 	"""Check if PasswordResetOTP model exists in database"""

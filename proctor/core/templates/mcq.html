@@ -90,6 +90,7 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
+        transform: scaleX(-1);
     }
 
     .face-detection-overlay {
@@ -311,6 +312,7 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
+        transform: scaleX(-1);
     }
 
     .status-indicator {
@@ -642,19 +644,19 @@
                 <div class="question-text">{{ question.text }}</div>
                 <div class="options-list">
                     <label class="option-item">
-                        <input type="radio" name="q{{ question.id }}" value="A" class="option-radio" required>
+                        <input type="radio" name="q{{ question.id }}" value="A" class="option-radio">
                         <span class="option-text">{{ question.option_a }}</span>
                     </label>
                     <label class="option-item">
-                        <input type="radio" name="q{{ question.id }}" value="B" class="option-radio" required>
+                        <input type="radio" name="q{{ question.id }}" value="B" class="option-radio">
                         <span class="option-text">{{ question.option_b }}</span>
                     </label>
                     <label class="option-item">
-                        <input type="radio" name="q{{ question.id }}" value="C" class="option-radio" required>
+                        <input type="radio" name="q{{ question.id }}" value="C" class="option-radio">
                         <span class="option-text">{{ question.option_c }}</span>
                     </label>
                     <label class="option-item">
-                        <input type="radio" name="q{{ question.id }}" value="D" class="option-radio" required>
+                        <input type="radio" name="q{{ question.id }}" value="D" class="option-radio">
                         <span class="option-text">{{ question.option_d }}</span>
                     </label>
                 </div>
@@ -1131,7 +1133,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const total = document.querySelectorAll('.question-card').length;
         const answered = document.querySelectorAll('.option-radio:checked').length;
         document.getElementById('answeredCount').textContent = answered;
-        document.getElementById('submitBtn').disabled = answered < total;
+        // Allow submission at any time - students can leave questions unattempted
+        document.getElementById('submitBtn').disabled = false;
     }
 
     // Add event listener to submit button

@@ -175,8 +175,8 @@ class DistractionDetector:
         mesh_coords = [(int(point.x * frame_width), int(point.y * frame_height))
                       for point in face_landmarks.landmark]
 
-        # FASTER Calibration phase - reduced to 10 frames (~0.33 seconds at 30fps)
-        if self.calibration_frames < 10:  # Reduced from 20 to 10 frames
+        # FASTER Calibration phase - reduced to 5 frames (~0.16 seconds at 30fps)
+        if self.calibration_frames < 5:  # Reduced from 10 to 5 frames for <2 second calibration
             if self.initialization_start_time is None:
                 self.initialization_start_time = current_time
             
@@ -195,11 +195,11 @@ class DistractionDetector:
             self.calibration_frames += 1
             
             # Show simplified calibration message
-            progress = int((self.calibration_frames / 10) * 100)
+            progress = int((self.calibration_frames / 5) * 100)
             if progress < 100:
                 response['warning_message'] = f'🔄 Calibrating... {progress}%'
             
-            if self.calibration_frames == 10:
+            if self.calibration_frames == 5:
                 self.calibration_complete = True
                 self.system_ready = True
                 response['warning_message'] = '✅ Ready'

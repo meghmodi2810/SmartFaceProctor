@@ -4,6 +4,8 @@ from django.utils import timezone
 from django.http import JsonResponse
 from datetime import timedelta
 from .models import Exam, Submission, ExamAssignment, NotificationRead
+import json
+import traceback
 
 @login_required
 def student_notifications(request):
@@ -110,12 +112,17 @@ def mark_notification_read(request, exam_id=None):
         try:
             # Handle both URL param and JSON body
             if exam_id is None:
-                import json
                 data = json.loads(request.body)
                 exam_id = data.get('exam_id')
             
             if not exam_id:
                 return JsonResponse({'success': False, 'message': 'Exam ID required'}, status=400)
+            
+            # Convert to int if string
+            try:
+                exam_id = int(exam_id)
+            except (ValueError, TypeError):
+                return JsonResponse({'success': False, 'message': 'Invalid exam ID format'}, status=400)
             
             exam = Exam.objects.get(id=exam_id)
             NotificationRead.objects.get_or_create(
@@ -125,10 +132,13 @@ def mark_notification_read(request, exam_id=None):
             return JsonResponse({'success': True, 'message': 'Notification marked as read'})
         except Exam.DoesNotExist:
             return JsonResponse({'success': False, 'message': 'Exam not found'}, status=404)
+        except json.JSONDecodeError as e:
+            return JsonResponse({'success': False, 'message': f'Invalid JSON: {str(e)}'}, status=400)
         except Exception as e:
-            return JsonResponse({'success': False, 'message': str(e)}, status=500)
+            traceback.print_exc()
+            return JsonResponse({'success': False, 'message': f'Server error: {str(e)}'}, status=500)
     
-    return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
+    return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=400)
 
 
 @login_required
