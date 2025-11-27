@@ -220,15 +220,17 @@ LOGGING = {
 }
 
 # Email Configuration (SMTP)
-# Configure these settings for email notifications
+# Load SMTP credentials from JSON file
+from core.config import smtp_credentials
+
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
+EMAIL_HOST = smtp_credentials.get('SMTP_HOST', 'smtp.gmail.com')
+EMAIL_PORT = smtp_credentials.get('SMTP_PORT', 587)
+EMAIL_USE_TLS = smtp_credentials.get('EMAIL_USE_TLS', True)
 EMAIL_USE_SSL = False
-EMAIL_HOST_USER = 'your-email@gmail.com'  # REPLACE with your actual Gmail address
-EMAIL_HOST_PASSWORD = 'your-app-password-here'  # REPLACE with your 16-character app password (remove spaces)
-DEFAULT_FROM_EMAIL = 'Smart Face Proctor <noreply@proctorsystem.com>'
+EMAIL_HOST_USER = smtp_credentials.get('SMTP_USER', '')
+EMAIL_HOST_PASSWORD = smtp_credentials.get('SMTP_API_KEY', '')
+DEFAULT_FROM_EMAIL = smtp_credentials.get('FROM_EMAIL', 'Smart Face Proctor <noreply@proctorsystem.com>')
 SERVER_EMAIL = EMAIL_HOST_USER
 
 # Site URL for email links

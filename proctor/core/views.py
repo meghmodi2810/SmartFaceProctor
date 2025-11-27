@@ -167,31 +167,10 @@ def register(request):
 		request.session['registration_role'] = role
 		request.session.modified = True
 		
-		# Send OTP email
+		# Send OTP email asynchronously
 		try:
-			subject = "Smart Face Proctor - Email Verification OTP"
-			message = f"""
-Dear {fullname},
-
-Thank you for registering with Smart Face Proctor!
-
-Your OTP for email verification is: {otp}
-
-This OTP is valid for 15 minutes.
-
-If you did not request this registration, please ignore this email.
-
-Best regards,
-Smart Face Proctor Team
-			"""
-			
-			send_mail(
-				subject=subject,
-				message=message,
-				from_email=settings.DEFAULT_FROM_EMAIL,
-				recipient_list=[email],
-				fail_silently=False,
-			)
+			from .email_utils import send_otp_email_async
+			send_otp_email_async(email, otp, fullname)
 			
 			messages.success(request, f'OTP has been sent to {email}. Please verify to complete registration.')
 			return redirect('verify_registration_otp')
@@ -201,7 +180,6 @@ Smart Face Proctor Team
 			return render(request, 'register.html')
 	
 	return render(request, 'register.html')
-
 
 def verify_registration_otp(request):
 	"""Verify OTP for registration"""
@@ -2618,7 +2596,7 @@ def check_distraction(request):
         else:
             detector.set_warning_threshold(warning_limit)
             detector.set_absence_threshold(absence_threshold)
-            detector.set_distraction_threshold(absence_threshold)  # Use same threshold for distraction
+            detector.set_distraction_threshold(absence_threshold)
         
         # Check if faculty has cancelled freeze for this student
         if exam_id and detector_state.get('is_frozen', False):
@@ -3018,3 +2996,4 @@ def search_exams(request):
         })
     
     return JsonResponse({'exams': results})
+`
