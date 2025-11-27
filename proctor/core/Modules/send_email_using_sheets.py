@@ -31,7 +31,13 @@ class SmartFaceProctorMailer:
         self.sheet_url = sheet_url
         self.sheet_name = sheet_name
         self.password_length = password_length
-        self.smtp_creds = self._load_smtp_credentials()
+        
+        # Only load SMTP credentials if path exists
+        if self.smtp_credentials_path:
+            self.smtp_creds = self._load_smtp_credentials()
+        else:
+            self.smtp_creds = {}
+            
         if self.google_credentials_path and self.sheet_url:
             self.sheet = self._get_google_sheet()
             self.recipients = self._collect_recipients()
@@ -41,8 +47,15 @@ class SmartFaceProctorMailer:
             self.recipients = []
 
     def _load_smtp_credentials(self):
-        with open(self.smtp_credentials_path, 'r') as f:
-            return json.load(f)
+        if not self.smtp_credentials_path or not os.path.exists(self.smtp_credentials_path):
+            print("Warning: SMTP credentials path not available")
+            return {}
+        try:
+            with open(self.smtp_credentials_path, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Warning: Could not load SMTP credentials: {e}")
+            return {}
 
     def _get_google_sheet(self):
         scope = [
