@@ -6,6 +6,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 import os
 from django.conf import settings
+from core.config import google_credentials_path
 
 class ExamValidator:
     def __init__(self):
@@ -28,9 +29,9 @@ class ExamValidator:
                 
             # Check if sheet is accessible
             try:
-                credentials_path = os.path.join(settings.BASE_DIR, 'core', 'config', 'credentials.json')
+                # Use centralized config for credentials path
                 scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-                creds = Credentials.from_service_account_file(credentials_path, scopes=scopes)
+                creds = Credentials.from_service_account_file(google_credentials_path, scopes=scopes)
                 client = gspread.authorize(creds)
                 sheet = client.open_by_key(sheet_id)
                 # Try to access the first worksheet
@@ -178,4 +179,4 @@ def validate_exam_data(title, exam_date, exam_time, duration_minutes, sheet_url)
     """Convenience function to validate exam data"""
     validator = ExamValidator()
     is_valid = validator.validate_complete_exam(title, exam_date, exam_time, duration_minutes, sheet_url)
-    return validator.get_validation_summary() 
+    return validator.get_validation_summary()

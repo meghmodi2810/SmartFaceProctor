@@ -9,6 +9,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 from pathlib import Path
 
 from core.models import User
+from core.config import smtp_credentials_path, google_credentials_path
 
 class SmartFaceProctorMailer:
     def __init__(self,
@@ -17,9 +18,14 @@ class SmartFaceProctorMailer:
                  sheet_url=None,
                  sheet_name='Sheet1',
                  password_length=12):
+        # Use centralized config if not provided
         if smtp_credentials_path is None:
-            smtp_credentials_path = os.path.join(os.path.dirname(__file__), '../config/SMTP_credentials.json')
-            smtp_credentials_path = os.path.normpath(smtp_credentials_path)
+            from core.config import smtp_credentials_path as default_smtp_path
+            smtp_credentials_path = default_smtp_path
+        if google_credentials_path is None:
+            from core.config import google_credentials_path as default_google_path
+            google_credentials_path = default_google_path
+            
         self.smtp_credentials_path = smtp_credentials_path
         self.google_credentials_path = google_credentials_path
         self.sheet_url = sheet_url

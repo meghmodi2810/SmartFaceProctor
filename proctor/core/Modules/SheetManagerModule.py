@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 import re
 import os
 from django.conf import settings
+from core.config import google_credentials_path
 
 def extract_sheet_id(sheet_url):
     """Extract the sheet ID from a Google Sheets URL."""
@@ -13,9 +14,15 @@ def extract_sheet_id(sheet_url):
     raise ValueError('Invalid Google Sheet URL')
 
 
-def get_questions_from_sheet(sheet_url, credentials_path='config/credentials.json', worksheet_index=0):
-    # Make the path absolute relative to the Django BASE_DIR
-    abs_credentials_path = os.path.join(settings.BASE_DIR, 'core', credentials_path)
+def get_questions_from_sheet(sheet_url, credentials_path=None, worksheet_index=0):
+    # Use centralized config if not provided
+    if credentials_path is None:
+        from core.config import google_credentials_path
+        abs_credentials_path = google_credentials_path
+    else:
+        # Make the path absolute relative to the Django BASE_DIR
+        abs_credentials_path = os.path.join(settings.BASE_DIR, 'core', credentials_path)
+    
     scopes = ["https://www.googleapis.com/auth/spreadsheets"]
     creds = Credentials.from_service_account_file(abs_credentials_path, scopes=scopes)
     client = gspread.authorize(creds)

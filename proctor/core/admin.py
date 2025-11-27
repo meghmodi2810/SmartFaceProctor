@@ -7,6 +7,7 @@ from django.urls import reverse
 from .models import User, BugReport, Division, Semester, Department, Exam
 import os
 from django.conf import settings
+from core.config import smtp_credentials_path, google_credentials_path
 
 class UserAdmin(admin.ModelAdmin):
     list_display = ('username', 'email', 'role', 'is_active')
@@ -28,10 +29,10 @@ class UserAdmin(admin.ModelAdmin):
 
     def send_sheet_emails(self, request):
         from core.Modules.send_email_using_sheets import SmartFaceProctorMailer
-        import os
-        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-        smtp_credentials_path = os.path.join(BASE_DIR, 'config', 'SMTP_credentials.json')
-        google_credentials_path = os.path.join(BASE_DIR, 'config', 'credentials.json')
+        
+        # Use centralized config paths
+        from core.config import smtp_credentials_path, google_credentials_path
+        
         # TODO: You may want to make the sheet URL configurable or store it in settings
         sheet_url = "https://docs.google.com/spreadsheets/d/1682Pl8z4Ix4IxI7UGfbZgcX6p_gzMpRl2tRi0_my9kI/edit?gid=0#gid=0"
         sheet_name = 'Sheet1'
