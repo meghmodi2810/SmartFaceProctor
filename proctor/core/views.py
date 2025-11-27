@@ -2996,4 +2996,3 @@ def search_exams(request):
         })
     
     return JsonResponse({'exams': results})
-`
