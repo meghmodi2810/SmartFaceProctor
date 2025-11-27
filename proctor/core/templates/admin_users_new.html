@@ -22,29 +22,14 @@
 <div class="card mb-4">
     <div class="card-body">
         <div class="row g-3">
-            <div class="col-md-3">
-                <label class="form-label">Role Filter</label>
-                <select name="role" id="roleFilter" class="form-select">
-                    <option value="">All Roles</option>
-                    <option value="Student">Student</option>
-                    <option value="Faculty">Faculty</option>
-                    <option value="Admin">Admin</option>
-                </select>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Search</label>
+            <div class="col-md-8">
+                <label class="form-label">Search (Type to search automatically)</label>
                 <input type="text" id="searchInput" class="form-control" placeholder="Search by username, email, or name" autocomplete="off">
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">&nbsp;</label>
-                <div class="d-grid">
-                    <button type="button" class="btn btn-outline-primary" onclick="performSearch()">
-                        <i class="fas fa-search me-2"></i>Search
-                    </button>
-                </div>
+                <small class="text-muted">Results update automatically as you type (minimum 2 characters)</small>
             </div>
         </div>
     </div>
+</div>
 </div>
 
 <!-- Users Table -->
@@ -95,12 +80,12 @@
                                 <a href="{% url 'admin_user_detail' user.id %}" class="btn btn-outline-info" title="View Details">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                {% comment %} <button class="btn btn-outline-warning" onclick="editUser({{ user.id }})" title="Edit">
+                                <button class="btn btn-outline-warning" onclick="editUser({{ user.id }})" title="Edit">
                                     <i class="fas fa-edit"></i>
                                 </button>
                                 <button class="btn btn-outline-danger" onclick="deleteUser({{ user.id }})" title="Delete">
                                     <i class="fas fa-trash"></i>
-                                </button> {% endcomment %}
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -386,3 +371,4 @@ function deleteUser(userId) {
 }
 </script>
 {% endblock %}
+

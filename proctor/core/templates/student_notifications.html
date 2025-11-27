@@ -332,6 +332,151 @@
         margin-bottom: 1rem;
         opacity: 0.3;
     }
+    
+    /* ====================== RESPONSIVE DESIGN ====================== */
+    
+    /* Tablet Devices (768px - 1024px) */
+    @media screen and (max-width: 1024px) {
+        .notifications-container {
+            padding: 1.5rem;
+        }
+        
+        .page-header {
+            padding: 1.5rem;
+        }
+        
+        .page-header h1 {
+            font-size: 1.75rem;
+        }
+        
+        .bulk-actions-toolbar {
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+        
+        .bulk-action-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+        
+        .exam-details-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    
+    /* Mobile Devices (max-width: 768px) */
+    @media screen and (max-width: 768px) {
+        .notifications-container {
+            padding: 1rem;
+        }
+        
+        .page-header {
+            padding: 1.25rem;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .page-header h1 {
+            font-size: 1.5rem;
+        }
+        
+        .page-header p {
+            font-size: 0.9rem;
+        }
+        
+        .bulk-actions-toolbar {
+            flex-direction: column;
+            align-items: stretch;
+            padding: 0.75rem;
+        }
+        
+        .bulk-action-btn {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .select-all-container {
+            padding: 0.75rem;
+        }
+        
+        .section-title {
+            font-size: 1.1rem;
+        }
+        
+        .notification-card {
+            flex-direction: column;
+            padding: 1.25rem;
+        }
+        
+        .notification-card:hover {
+            transform: translateX(0);
+        }
+        
+        .notification-checkbox {
+            align-self: flex-start;
+        }
+        
+        .notification-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+        
+        .notification-title {
+            font-size: 1.1rem;
+        }
+        
+        .notification-badge {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+        }
+        
+        .notification-details {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .notification-actions {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .action-btn {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .exam-details-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    /* Small Mobile Devices (max-width: 480px) */
+    @media screen and (max-width: 480px) {
+        .notifications-container {
+            padding: 0.75rem;
+        }
+        
+        .page-header {
+            padding: 1rem;
+        }
+        
+        .page-header h1 {
+            font-size: 1.25rem;
+        }
+        
+        .notification-card {
+            padding: 1rem;
+        }
+        
+        .notification-title {
+            font-size: 1rem;
+        }
+        
+        .section-title {
+            font-size: 1rem;
+        }
+    }
 </style>
 {% endblock %}
 

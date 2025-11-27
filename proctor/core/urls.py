@@ -3,6 +3,7 @@ from . import views
 from . import admin_views
 from . import session_admin_views
 from . import faculty_monitoring_views
+from . import faculty_monitoring_views_end_exam
 from . import views_notifications
 from . import views_student_results
 from . import views_api
@@ -38,6 +39,7 @@ urlpatterns = [
     
     # Faculty Monitoring & Analytics
     path('faculty/live-monitoring/', faculty_monitoring_views.faculty_live_monitoring, name='faculty_live_monitoring'),
+    path('faculty/end-exam/', faculty_monitoring_views_end_exam.end_exam, name='end_exam'),
     path('faculty/cancel-freeze/', faculty_monitoring_views.cancel_freeze, name='cancel_freeze'),
     path('faculty/reset-attempt/', faculty_monitoring_views.reset_exam_attempt, name='reset_exam_attempt'),
     path('faculty/violations/<int:exam_id>/<int:student_id>/', faculty_monitoring_views.student_violations_detail, name='student_violations_detail'),

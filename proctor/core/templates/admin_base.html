@@ -157,24 +157,24 @@
                     Divisions
                 </a>
             </li>
-            <li class="nav-item">
+            {% comment %} <li class="nav-item">
                 <a href="{% url 'admin_exams' %}" class="nav-link {% if 'exam' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="fas fa-clipboard-list"></i>
                     Exam Management
                 </a>
-            </li>
+            </li> {% endcomment %}
             <li class="nav-item">
                 <a href="{% url 'admin_bug_reports' %}" class="nav-link {% if 'bug' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="fas fa-bug"></i>
                     Bug Reports
                 </a>
             </li>
-            <li class="nav-item">
+            {% comment %} <li class="nav-item">
                 <a href="{% url 'admin_session_monitor' %}" class="nav-link {% if 'session' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="fas fa-clock"></i>
                     Session Monitor
                 </a>
-            </li>
+            </li> {% endcomment %}
             
             <!-- Settings Dropdown -->
             <li class="nav-item">
