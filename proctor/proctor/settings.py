@@ -46,6 +46,7 @@ STATIC_URL = '/static/'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Add WhiteNoise for static files on Render
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -221,12 +222,12 @@ LOGGING = {
 # Email Configuration (SMTP)
 # Configure these settings for email notifications
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'  # Change to your SMTP server
-EMAIL_PORT = 587  # TLS port
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
-EMAIL_HOST_USER = ''  # Your email address (e.g., 'your-email@gmail.com')
-EMAIL_HOST_PASSWORD = ''  # Your email password or app-specific password
+EMAIL_HOST_USER = 'your-email@gmail.com'  # REPLACE with your actual Gmail address
+EMAIL_HOST_PASSWORD = 'your-app-password-here'  # REPLACE with your 16-character app password (remove spaces)
 DEFAULT_FROM_EMAIL = 'Smart Face Proctor <noreply@proctorsystem.com>'
 SERVER_EMAIL = EMAIL_HOST_USER
 

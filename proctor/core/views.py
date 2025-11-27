@@ -131,41 +131,221 @@ def login_view(request):
     return render(request, 'login.html')
 
 def register(request):
+	"""Registration page with OTP verification and auto-generated credentials"""
 	if request.method == 'POST':
-		fullname = request.POST.get('fullname')
-		username = request.POST.get('username')
-		password1 = request.POST.get('password1')
-		password2 = request.POST.get('password2')
-		role = request.POST.get('role')
-
-		if password1 != password2:
-			messages.error(request, 'Passwords do not match.')
+		email = request.POST.get('email', '').strip()
+		fullname = request.POST.get('fullname', '').strip()
+		role = request.POST.get('role', '').strip()
+		
+		# Validate inputs
+		if not email or not fullname or not role:
+			messages.error(request, 'All fields are required.')
 			return render(request, 'register.html')
-
+		
+		if role not in ['Student', 'Faculty']:
+			messages.error(request, 'Invalid role selected.')
+			return render(request, 'register.html')
+		
+		# Check if email already exists
+		from django.contrib.auth import get_user_model
+		User = get_user_model()
+		if User.objects.filter(email=email).exists():
+			messages.error(request, 'Email already registered.')
+			return render(request, 'register.html')
+		
+		# Generate OTP
+		import random
+		otp = str(random.randint(100000, 999999))
+		
+		# Store OTP in database
+		from .models import PasswordResetOTP
+		PasswordResetOTP.objects.create(email=email, otp=otp)
+		
+		# Store registration data in session
+		request.session['registration_email'] = email
+		request.session['registration_fullname'] = fullname
+		request.session['registration_role'] = role
+		request.session.modified = True
+		
+		# Send OTP email
 		try:
+			subject = "Smart Face Proctor - Email Verification OTP"
+			message = f"""
+Dear {fullname},
+
+Thank you for registering with Smart Face Proctor!
+
+Your OTP for email verification is: {otp}
+
+This OTP is valid for 15 minutes.
+
+If you did not request this registration, please ignore this email.
+
+Best regards,
+Smart Face Proctor Team
+			"""
+			
+			send_mail(
+				subject=subject,
+				message=message,
+				from_email=settings.DEFAULT_FROM_EMAIL,
+				recipient_list=[email],
+				fail_silently=False,
+			)
+			
+			messages.success(request, f'OTP has been sent to {email}. Please verify to complete registration.')
+			return redirect('verify_registration_otp')
+			
+		except Exception as e:
+			messages.error(request, f'Error sending OTP: {str(e)}. Please check your email configuration.')
+			return render(request, 'register.html')
+	
+	return render(request, 'register.html')
+
+
+def verify_registration_otp(request):
+	"""Verify OTP for registration"""
+	email = request.session.get('registration_email')
+	
+	if not email:
+		messages.error(request, 'Please start registration first.')
+		return redirect('register')
+	
+	if request.method == 'POST':
+		otp = request.POST.get('otp', '').strip()
+		
+		if not otp:
+			messages.error(request, 'Please enter the OTP.')
+			return render(request, 'verify_registration_otp.html', {'email': email})
+		
+		# Verify OTP
+		from .models import PasswordResetOTP
+		try:
+			otp_record = PasswordResetOTP.objects.filter(
+				email=email, 
+				otp=otp, 
+				is_used=False
+			).order_by('-created_at').first()
+			
+			if not otp_record:
+				messages.error(request, 'Invalid OTP.')
+				return render(request, 'verify_registration_otp.html', {'email': email})
+			
+			if otp_record.is_expired():
+				messages.error(request, 'OTP has expired. Please request a new one.')
+				return redirect('register')
+			
+			# Mark OTP as used
+			otp_record.is_used = True
+			otp_record.save()
+			
+			# Generate username and password
+			fullname = request.session.get('registration_fullname')
+			role = request.session.get('registration_role')
+			
+			import random
+			random_number = random.randint(1000000000, 9999999999)
+			
+			# Generate username based on role
+			if role == 'Faculty':
+				username = f'SPF-{random_number}'
+			else:  # Student
+				username = f'SPS-{random_number}'
+			
+			# Generate random password
+			import string
+			password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
+			
+			# Create user
+			from django.contrib.auth import get_user_model
+			User = get_user_model()
+			
 			# Split fullname into first_name and last_name
 			names = fullname.split(maxsplit=1)
 			first_name = names[0]
 			last_name = names[1] if len(names) > 1 else ''
-
-			# Create the user
-			from django.contrib.auth import get_user_model
-			User = get_user_model()
+			
 			user = User.objects.create_user(
 				username=username,
-				email=username,  # Using username as email since it's required
-				password=password1,
+				email=email,
+				password=password,
 				first_name=first_name,
 				last_name=last_name,
 				role=role
 			)
-			messages.success(request, 'Registration successful! Please login.')
-			return redirect('login')
-		except Exception as e:
-			messages.error(request, str(e))
-			return render(request, 'register.html')
+			
+			# Send credentials email
+			try:
+				subject = "Smart Face Proctor - Your Login Credentials"
+				message = f"""
+Dear {fullname},
 
-	return render(request, 'register.html')
+Your registration has been completed successfully!
+
+Your login credentials are:
+Username: {username}
+Password: {password}
+
+Role: {role}
+
+Please login at: {settings.SITE_URL}/login/
+
+Important: Please change your password after first login for security.
+
+Best regards,
+Smart Face Proctor Team
+				"""
+				
+				send_mail(
+					subject=subject,
+					message=message,
+					from_email=settings.DEFAULT_FROM_EMAIL,
+					recipient_list=[email],
+					fail_silently=False,
+				)
+			except Exception as e:
+				# Even if email fails, user is created
+				pass
+			
+			# Clear session data
+			for key in ['registration_email', 'registration_fullname', 'registration_role']:
+				if key in request.session:
+					del request.session[key]
+			
+			# Show credentials on success page
+			request.session['new_username'] = username
+			request.session['new_password'] = password
+			request.session.modified = True
+			
+			return redirect('registration_success')
+			
+		except Exception as e:
+			messages.error(request, f'Error during registration: {str(e)}')
+			return render(request, 'verify_registration_otp.html', {'email': email})
+	
+	return render(request, 'verify_registration_otp.html', {'email': email})
+
+
+def registration_success(request):
+	"""Show registration success with credentials"""
+	username = request.session.get('new_username')
+	password = request.session.get('new_password')
+	
+	if not username or not password:
+		return redirect('login')
+	
+	context = {
+		'username': username,
+		'password': password
+	}
+	
+	# Clear credentials from session after displaying
+	if 'new_username' in request.session:
+		del request.session['new_username']
+	if 'new_password' in request.session:
+		del request.session['new_password']
+	
+	return render(request, 'registration_success.html', context)
 
 def forget(request):
 	if request.method == 'POST':
@@ -2813,7 +2993,7 @@ def search_exams(request):
     
     # Filter by title if query exists
     if query:
-        exams = exams.filter(title__icontains=query)
+        exams = exams.filter(title__icontains(query))
     
     # Add submission statistics for each exam
     results = []
