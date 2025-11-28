@@ -167,16 +167,59 @@ def register(request):
 		request.session['registration_role'] = role
 		request.session.modified = True
 		
-		# Send OTP email asynchronously
+		# Send OTP email SYNCHRONOUSLY to capture errors
 		try:
-			from .email_utils import send_otp_email_async
-			send_otp_email_async(email, otp, fullname)
+			from django.core.mail import send_mail
+			from django.conf import settings
 			
-			messages.success(request, f'OTP has been sent to {email}. Please verify to complete registration.')
-			return redirect('verify_registration_otp')
+			subject = "Smart Face Proctor - Email Verification OTP"
+			message = f"""
+Dear {fullname},
+
+Thank you for registering with Smart Face Proctor!
+
+Your OTP for email verification is: {otp}
+
+This OTP is valid for 15 minutes.
+
+If you did not request this registration, please ignore this email.
+
+Best regards,
+Smart Face Proctor Team
+			"""
+			
+			print(f"🔑 OTP for {email}: {otp}")
+			print(f"📤 Sending OTP email synchronously...")
+			print(f"   FROM: {settings.DEFAULT_FROM_EMAIL}")
+			print(f"   TO: {email}")
+			print(f"   HOST: {settings.EMAIL_HOST}")
+			print(f"   PORT: {settings.EMAIL_PORT}")
+			print(f"   USER: {settings.EMAIL_HOST_USER}")
+			print(f"   PASSWORD SET: {bool(settings.EMAIL_HOST_PASSWORD)}")
+			
+			result = send_mail(
+				subject=subject,
+				message=message,
+				from_email=settings.DEFAULT_FROM_EMAIL,
+				recipient_list=[email],
+				fail_silently=False,
+			)
+			
+			print(f"✅ Email send result: {result}")
+			
+			if result:
+				messages.success(request, f'OTP has been sent to {email}. Please verify to complete registration.')
+				return redirect('verify_registration_otp')
+			else:
+				print(f"❌ send_mail returned 0 - email not sent")
+				messages.error(request, 'Failed to send OTP email. Please try again.')
+				return render(request, 'register.html')
 			
 		except Exception as e:
-			messages.error(request, f'Error sending OTP: {str(e)}. Please check your email configuration.')
+			print(f"❌ Email error: {str(e)}")
+			import traceback
+			traceback.print_exc()
+			messages.error(request, f'Error sending OTP: {str(e)}')
 			return render(request, 'register.html')
 	
 	return render(request, 'register.html')
@@ -2996,3 +3039,4 @@ def search_exams(request):
         })
     
     return JsonResponse({'exams': results})
+```
