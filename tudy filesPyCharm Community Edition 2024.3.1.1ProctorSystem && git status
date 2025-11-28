@@ -1,0 +1,43 @@
+[33me1056a7[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mdeployment[m[33m)[m Add SendGrid email configuration
+[33mcde6078[m[33m ([m[1;31morigin/deployment[m[33m)[m Production email error sorted
+[33m9f94c0d[m Email async added for fast emails and error solved
+[33m56fcfae[m Email async added for fast emails
+[33me640073[m Deployment added to new branch
+[33maa85efa[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m Edited requirements.txt postgres for deployment
+[33ma6e60ea[m Postgres for deployment, mysql for local
+[33m976f44a[m Changed in the build
+[33m1d3ba04[m Build successful, error in deployment, added build.sh
+[33md571fbb[m Requirements.txt updated, added gunicorn for deployment
+[33m7a8584f[m Production failed, error solved requirements.txt
+[33m4dd512e[m Production ready database and API
+[33mb1d6b8e[m Prepare for deployment
+[33mb4acee6[m New tab sets warning issue solved
+[33m1e541a8[m Calibrating issue solved, exam result issue solved
+[33m811ef5a[m Most bug fixes with admin and calibrating issues. Solved major portion of bugs
+[33m89e68ef[m Git commit after presentation 2, project almost completed but so many bugs and fixes remaining
+[33m903d033[m Results issue solved
+[33m0920adf[m The issue of dashboard solved, calibrating solved, feedback added, result bug fixing
+[33m866a69e[m Commit after making changes to UI and settings tab added, admin pending, calibration pending
+[33m6db3d37[m Added notifications, so many errors right now, result policy added
+[33mfd44676[m Feedback page and home page added
+[33m495b6b0[m So many bug fixes, popup styles, sensitivity of distraction reduced
+[33m91723af[m How to schedule exam added, distraction is almost correct, result is fine, exam filter issue solved
+[33m8cc820a[m Working end exam, submit exam and violation log, but broken distraction
+[33mac9f707[m Added README.md with requirements, working exam but so many glitches
+[33m7a7f260[m Distraction detection worked but it is very serious, department and semester worked but there is redundency
+[33md75a568[m Working mostly, some error, logging done, admin NOT proper, exam distraction pending
+[33md14c005[m Proctor UI fixed, partial working proctor, exam monitoring and analytics
+[33mfc92c7a[m So many changes and bug fixes, partial proctoring works
+[33m2ec8c39[m Fixed some bugs, violation and exam is broken
+[33m3c9b1b4[m Some changes after UI and exam proctoring
+[33mb1bbc42[m Few bug fixes and partial face detection working
+[33m5cb21d4[m Distraction detection added into exam but has many bugs
+[33m5276811[m After few changes into UI
+[33m236ea2d[m Added reports and exam completed but without proctoring
+[33mcdf6f1c[m Exam working but still multiple issues
+[33mdfda1ce[m Added a homepage and fixed few bugs
+[33m30aeceb[m Requirements added after presentation new
+[33mf079e3a[m Commit after presentation
+[33m855605b[m Add .gitignore to ignore secrets and build artifacts
+[33mc928723[m Move .gitignore to project root
+[33mffd1bf1[m Initial commit
