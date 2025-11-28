@@ -167,13 +167,19 @@ def register(request):
 		request.session['registration_role'] = role
 		request.session.modified = True
 		
-		# Send OTP email SYNCHRONOUSLY to capture errors
-		try:
-			from django.core.mail import send_mail
-			from django.conf import settings
-			
-			subject = "Smart Face Proctor - Email Verification OTP"
-			message = f"""
+		# Log OTP for debugging (visible in server logs)
+		print(f"🔑 OTP for {email}: {otp}")
+		
+		# Send OTP email ASYNCHRONOUSLY using threading to prevent worker timeout
+		import threading
+		
+		def send_otp_in_background():
+			try:
+				from django.core.mail import send_mail
+				from django.conf import settings
+				
+				subject = "Smart Face Proctor - Email Verification OTP"
+				message = f"""
 Dear {fullname},
 
 Thank you for registering with Smart Face Proctor!
@@ -186,41 +192,36 @@ If you did not request this registration, please ignore this email.
 
 Best regards,
 Smart Face Proctor Team
-			"""
-			
-			print(f"🔑 OTP for {email}: {otp}")
-			print(f"📤 Sending OTP email synchronously...")
-			print(f"   FROM: {settings.DEFAULT_FROM_EMAIL}")
-			print(f"   TO: {email}")
-			print(f"   HOST: {settings.EMAIL_HOST}")
-			print(f"   PORT: {settings.EMAIL_PORT}")
-			print(f"   USER: {settings.EMAIL_HOST_USER}")
-			print(f"   PASSWORD SET: {bool(settings.EMAIL_HOST_PASSWORD)}")
-			
-			result = send_mail(
-				subject=subject,
-				message=message,
-				from_email=settings.DEFAULT_FROM_EMAIL,
-				recipient_list=[email],
-				fail_silently=False,
-			)
-			
-			print(f"✅ Email send result: {result}")
-			
-			if result:
-				messages.success(request, f'OTP has been sent to {email}. Please verify to complete registration.')
-				return redirect('verify_registration_otp')
-			else:
-				print(f"❌ send_mail returned 0 - email not sent")
-				messages.error(request, 'Failed to send OTP email. Please try again.')
-				return render(request, 'register.html')
-			
-		except Exception as e:
-			print(f"❌ Email error: {str(e)}")
-			import traceback
-			traceback.print_exc()
-			messages.error(request, f'Error sending OTP: {str(e)}')
-			return render(request, 'register.html')
+				"""
+				
+				print(f"📤 [Background Thread] Sending OTP email to {email}...")
+				print(f"   FROM: {settings.DEFAULT_FROM_EMAIL}")
+				
+				result = send_mail(
+					subject=subject,
+					message=message,
+					from_email=settings.DEFAULT_FROM_EMAIL,
+					recipient_list=[email],
+					fail_silently=False,
+				)
+				
+				if result:
+					print(f"✅ [Background Thread] Email sent successfully to {email}")
+				else:
+					print(f"❌ [Background Thread] send_mail returned 0 for {email}")
+					
+			except Exception as e:
+				print(f"❌ [Background Thread] Email error for {email}: {str(e)}")
+				import traceback
+				traceback.print_exc()
+		
+		# Start email sending in background thread (daemon=False so it completes)
+		email_thread = threading.Thread(target=send_otp_in_background, daemon=False)
+		email_thread.start()
+		
+		# Redirect immediately without waiting for email
+		messages.success(request, f'OTP has been sent to {email}. Please check your inbox (and spam folder) and verify to complete registration.')
+		return redirect('verify_registration_otp')
 	
 	return render(request, 'register.html')
 
@@ -1226,7 +1227,7 @@ def faculty_results(request):
 	# Optional search
 	query = request.GET.get('q', '').strip()
 	if query:
-		exams_qs = exams_qs.filter(title__icontains(query))
+		exams_qs = exams_qs.filter(title__icontains=query)
 	
 	# Precompute stats efficiently
 	from django.db.models import Count, Avg, Max, Min
@@ -3014,7 +3015,7 @@ def search_exams(request):
     
     # Filter by title if query exists
     if query:
-        exams = exams.filter(title__icontains(query))
+        exams = exams.filter(title__icontains=query)
     
     # Add submission statistics for each exam
     results = []
@@ -3039,4 +3040,3 @@ def search_exams(request):
         })
     
     return JsonResponse({'exams': results})
-```

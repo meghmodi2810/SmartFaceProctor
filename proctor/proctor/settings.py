@@ -233,9 +233,11 @@ if ENV == 'render':
     EMAIL_USE_SSL = False
     EMAIL_HOST_USER = 'apikey'  # This is literal string 'apikey'
     EMAIL_HOST_PASSWORD = os.environ.get('SENDGRID_API_KEY', '')  # Set in Render environment
-    DEFAULT_FROM_EMAIL = os.environ.get('FROM_EMAIL', 'Smart Face Proctor <noreply@smartfaceproctor.com>')
+    # IMPORTANT: Use verified sender email from SendGrid dashboard
+    DEFAULT_FROM_EMAIL = os.environ.get('FROM_EMAIL', 'meghmodi4ever@gmail.com')
     SERVER_EMAIL = DEFAULT_FROM_EMAIL
     SITE_URL = 'https://smartfaceproctor.onrender.com'
+    EMAIL_TIMEOUT = 10  # 10 second timeout to prevent worker hangs
     
     # Debug: Print email configuration on startup
     print("=" * 50)
