@@ -236,6 +236,22 @@ if ENV == 'render':
     DEFAULT_FROM_EMAIL = os.environ.get('FROM_EMAIL', 'Smart Face Proctor <noreply@smartfaceproctor.com>')
     SERVER_EMAIL = DEFAULT_FROM_EMAIL
     SITE_URL = 'https://smartfaceproctor.onrender.com'
+    
+    # Debug: Print email configuration on startup
+    print("=" * 50)
+    print("📧 EMAIL CONFIGURATION (RENDER/SENDGRID)")
+    print(f"   ENV: {ENV}")
+    print(f"   EMAIL_HOST: {EMAIL_HOST}")
+    print(f"   EMAIL_PORT: {EMAIL_PORT}")
+    print(f"   EMAIL_HOST_USER: {EMAIL_HOST_USER}")
+    print(f"   EMAIL_HOST_PASSWORD SET: {bool(EMAIL_HOST_PASSWORD)}")
+    print(f"   EMAIL_HOST_PASSWORD LENGTH: {len(EMAIL_HOST_PASSWORD) if EMAIL_HOST_PASSWORD else 0}")
+    print(f"   DEFAULT_FROM_EMAIL: {DEFAULT_FROM_EMAIL}")
+    print(f"   EMAIL_USE_TLS: {EMAIL_USE_TLS}")
+    if not EMAIL_HOST_PASSWORD:
+        print("   ⚠️  WARNING: SENDGRID_API_KEY environment variable is NOT SET!")
+        print("   ⚠️  Emails will NOT be sent. Add SENDGRID_API_KEY in Render Dashboard.")
+    print("=" * 50)
 else:
     # Gmail Configuration for Local Development
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -248,6 +264,17 @@ else:
     DEFAULT_FROM_EMAIL = smtp_credentials.get('FROM_EMAIL', 'Smart Face Proctor <noreply@proctorsystem.com>')
     SERVER_EMAIL = EMAIL_HOST_USER
     SITE_URL = 'http://localhost:8000'
+    
+    # Debug: Print email configuration on startup
+    print("=" * 50)
+    print("📧 EMAIL CONFIGURATION (LOCAL/GMAIL)")
+    print(f"   ENV: {ENV}")
+    print(f"   EMAIL_HOST: {EMAIL_HOST}")
+    print(f"   EMAIL_PORT: {EMAIL_PORT}")
+    print(f"   EMAIL_HOST_USER: {EMAIL_HOST_USER[:5]}***" if EMAIL_HOST_USER else "   EMAIL_HOST_USER: NOT SET")
+    print(f"   EMAIL_HOST_PASSWORD SET: {bool(EMAIL_HOST_PASSWORD)}")
+    print(f"   DEFAULT_FROM_EMAIL: {DEFAULT_FROM_EMAIL}")
+    print("=" * 50)
 
 # Create logs directory if it doesn't exist
 import os

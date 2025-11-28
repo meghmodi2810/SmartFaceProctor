@@ -3,14 +3,90 @@ Asynchronous Email Utility for Smart Face Proctor
 Sends emails in background threads to prevent blocking the main application
 """
 import threading
-from django.core.mail import send_mail
+import time
+from django.core.mail import send_mail, EmailMessage
 from django.conf import settings
 import logging
 
 logger = logging.getLogger(__name__)
 
+# Log email configuration on module load
+def _log_email_config():
+    """Log email configuration for debugging"""
+    try:
+        host = getattr(settings, 'EMAIL_HOST', 'NOT SET')
+        port = getattr(settings, 'EMAIL_PORT', 'NOT SET')
+        user = getattr(settings, 'EMAIL_HOST_USER', 'NOT SET')
+        has_password = bool(getattr(settings, 'EMAIL_HOST_PASSWORD', ''))
+        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'NOT SET')
+        use_tls = getattr(settings, 'EMAIL_USE_TLS', False)
+        
+        # Mask the user for security
+        masked_user = user[:3] + '***' if user and len(user) > 3 else 'NOT SET'
+        
+        print(f"📧 Email Configuration:")
+        print(f"   HOST: {host}")
+        print(f"   PORT: {port}")
+        print(f"   USER: {masked_user}")
+        print(f"   PASSWORD SET: {has_password}")
+        print(f"   FROM: {from_email}")
+        print(f"   USE_TLS: {use_tls}")
+        
+        if not has_password:
+            print("⚠️  WARNING: EMAIL_HOST_PASSWORD is not set! Emails will fail.")
+        if host == 'smtp.sendgrid.net' and user != 'apikey':
+            print("⚠️  WARNING: For SendGrid, EMAIL_HOST_USER should be 'apikey'")
+            
+    except Exception as e:
+        print(f"❌ Error logging email config: {e}")
 
-def send_email_async(subject, message, recipient_list, html_message=None, fail_silently=False):
+# Log config when module loads
+_log_email_config()
+
+
+def send_email_sync(subject, message, recipient_list, html_message=None):
+    """
+    Send email synchronously (blocking) - more reliable for production
+    
+    Returns:
+        tuple: (success: bool, error_message: str or None)
+    """
+    try:
+        # Validate configuration
+        if not getattr(settings, 'EMAIL_HOST_PASSWORD', ''):
+            error_msg = "EMAIL_HOST_PASSWORD is not configured"
+            print(f"❌ {error_msg}")
+            return False, error_msg
+        
+        print(f"📤 Sending email to {recipient_list}...")
+        print(f"   Subject: {subject}")
+        print(f"   From: {settings.DEFAULT_FROM_EMAIL}")
+        print(f"   Host: {settings.EMAIL_HOST}:{settings.EMAIL_PORT}")
+        
+        result = send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=recipient_list,
+            html_message=html_message,
+            fail_silently=False,
+        )
+        
+        if result:
+            print(f"✅ Email sent successfully to {recipient_list}")
+            return True, None
+        else:
+            print(f"❌ Email send returned 0 (no emails sent)")
+            return False, "send_mail returned 0"
+            
+    except Exception as e:
+        error_msg = str(e)
+        print(f"❌ Failed to send email to {recipient_list}: {error_msg}")
+        logger.error(f"Failed to send email to {recipient_list}: {error_msg}")
+        return False, error_msg
+
+
+def send_email_async(subject, message, recipient_list, html_message=None, fail_silently=True):
     """
     Send email asynchronously using threading to avoid blocking the request
     
@@ -26,22 +102,42 @@ def send_email_async(subject, message, recipient_list, html_message=None, fail_s
     """
     def send():
         try:
-            send_mail(
+            # Small delay to ensure the main request has context
+            time.sleep(0.5)
+            
+            # Check if email is properly configured
+            if not getattr(settings, 'EMAIL_HOST_PASSWORD', ''):
+                print(f"⚠️ Email not configured (no password). Would send to: {recipient_list}")
+                print(f"   Subject: {subject}")
+                logger.warning(f"Email not sent - EMAIL_HOST_PASSWORD not configured")
+                return
+            
+            print(f"📤 [Thread] Sending email to {recipient_list}...")
+            
+            result = send_mail(
                 subject=subject,
                 message=message,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=recipient_list,
                 html_message=html_message,
-                fail_silently=fail_silently,
+                fail_silently=False,  # Always get the error for logging
             )
-            logger.info(f"Email sent successfully to {recipient_list}")
+            
+            if result:
+                print(f"✅ [Thread] Email sent successfully to {recipient_list}")
+                logger.info(f"Email sent successfully to {recipient_list}")
+            else:
+                print(f"⚠️ [Thread] send_mail returned 0 for {recipient_list}")
+                
         except Exception as e:
+            print(f"❌ [Thread] Failed to send email to {recipient_list}: {str(e)}")
             logger.error(f"Failed to send email to {recipient_list}: {str(e)}")
             if not fail_silently:
                 raise
     
     # Create and start the thread
-    email_thread = threading.Thread(target=send, daemon=True)
+    # Use daemon=False so thread completes even if main request ends
+    email_thread = threading.Thread(target=send, daemon=False)
     email_thread.start()
     
     return email_thread
@@ -50,11 +146,6 @@ def send_email_async(subject, message, recipient_list, html_message=None, fail_s
 def send_otp_email_async(email, otp, fullname="User"):
     """
     Send OTP email asynchronously for registration
-    
-    Args:
-        email (str): Recipient email address
-        otp (str): 6-digit OTP code
-        fullname (str): Recipient's full name
     """
     subject = "Smart Face Proctor - Email Verification OTP"
     message = f"""
@@ -118,27 +209,25 @@ Smart Face Proctor Team
     </html>
     """
     
+    print(f"🔑 OTP for {email}: {otp}")  # Log OTP for debugging
+    
     return send_email_async(
         subject=subject,
         message=message,
         recipient_list=[email],
         html_message=html_message,
-        fail_silently=False
+        fail_silently=True
     )
 
 
 def send_credentials_email_async(email, username, password, fullname, role):
     """
     Send login credentials email asynchronously after successful registration
-    
-    Args:
-        email (str): Recipient email address
-        username (str): Generated username (SPF-xxx or SPS-xxx)
-        password (str): Generated password
-        fullname (str): User's full name
-        role (str): User role (Faculty or Student)
     """
     subject = "Smart Face Proctor - Your Login Credentials"
+    
+    site_url = getattr(settings, 'SITE_URL', 'https://smartfaceproctor.onrender.com')
+    
     message = f"""
 Dear {fullname},
 
@@ -150,7 +239,7 @@ Password: {password}
 
 Role: {role}
 
-Please login at: {settings.SITE_URL}/login/
+Please login at: {site_url}/login/
 
 Important: Please change your password after first login for security.
 
@@ -214,7 +303,7 @@ Smart Face Proctor Team
                 </div>
                 
                 <p style="text-align: center; margin-top: 30px;">
-                    <a href="{settings.SITE_URL}/login/" 
+                    <a href="{site_url}/login/" 
                        style="display: inline-block; padding: 12px 30px; background: #667eea; 
                               color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
                         Login Now
@@ -231,23 +320,20 @@ Smart Face Proctor Team
     </html>
     """
     
+    print(f"🔐 Credentials for {email}: Username={username}")  # Log for debugging
+    
     return send_email_async(
         subject=subject,
         message=message,
         recipient_list=[email],
         html_message=html_message,
-        fail_silently=False
+        fail_silently=True
     )
 
 
 def send_password_reset_otp_async(email, otp, username="User"):
     """
     Send password reset OTP email asynchronously
-    
-    Args:
-        email (str): Recipient email address
-        otp (str): 6-digit OTP code
-        username (str): User's username
     """
     subject = "Smart Face Proctor - Password Reset OTP"
     message = f"""
@@ -316,10 +402,12 @@ Smart Face Proctor Team
     </html>
     """
     
+    print(f"🔑 Password Reset OTP for {email}: {otp}")  # Log for debugging
+    
     return send_email_async(
         subject=subject,
         message=message,
         recipient_list=[email],
         html_message=html_message,
-        fail_silently=False
+        fail_silently=True
     )
