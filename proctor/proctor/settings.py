@@ -223,36 +223,31 @@ LOGGING = {
 # Load SMTP credentials from JSON file
 from core.config import smtp_credentials
 
-# Use Brevo (Sendinblue) for production (Render), Gmail for local development
+# Use Brevo HTTP API for production (bypasses SMTP port blocking), Gmail for local development
 if ENV == 'render':
-    # Brevo (Sendinblue) Configuration for Render (free tier: 300 emails/day)
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-    EMAIL_HOST = 'smtp-relay.brevo.com'  # Brevo SMTP server
-    EMAIL_PORT = 587
-    EMAIL_USE_TLS = True
-    EMAIL_USE_SSL = False
-    EMAIL_HOST_USER = os.environ.get('BREVO_SMTP_USER', '')  # Your Brevo login email
-    EMAIL_HOST_PASSWORD = os.environ.get('BREVO_SMTP_KEY', '')  # Your Brevo SMTP API key
+    # Brevo HTTP API Configuration for Render (free tier: 300 emails/day)
+    # Uses HTTP API instead of SMTP to avoid port blocking issues
+    EMAIL_BACKEND = 'core.brevo_backend.BrevoEmailBackend'
     # IMPORTANT: Use verified sender email from Brevo dashboard
     DEFAULT_FROM_EMAIL = os.environ.get('FROM_EMAIL', 'meghmodi4ever@gmail.com')
     SERVER_EMAIL = DEFAULT_FROM_EMAIL
     SITE_URL = 'https://smartfaceproctor.onrender.com'
-    EMAIL_TIMEOUT = 10  # 10 second timeout to prevent worker hangs
+    EMAIL_TIMEOUT = 10  # 10 second timeout
     
     # Debug: Print email configuration on startup
+    brevo_api_key = os.environ.get('BREVO_API_KEY', '')
     print("=" * 50)
-    print("📧 EMAIL CONFIGURATION (RENDER/BREVO)")
+    print("📧 EMAIL CONFIGURATION (RENDER/BREVO HTTP API)")
     print(f"   ENV: {ENV}")
-    print(f"   EMAIL_HOST: {EMAIL_HOST}")
-    print(f"   EMAIL_PORT: {EMAIL_PORT}")
-    print(f"   EMAIL_HOST_USER: {EMAIL_HOST_USER[:5]}***" if EMAIL_HOST_USER else "   EMAIL_HOST_USER: NOT SET")
-    print(f"   EMAIL_HOST_PASSWORD SET: {bool(EMAIL_HOST_PASSWORD)}")
-    print(f"   EMAIL_HOST_PASSWORD LENGTH: {len(EMAIL_HOST_PASSWORD) if EMAIL_HOST_PASSWORD else 0}")
+    print(f"   EMAIL_BACKEND: core.brevo_backend.BrevoEmailBackend")
+    print(f"   BREVO_API_KEY SET: {bool(brevo_api_key)}")
+    print(f"   BREVO_API_KEY LENGTH: {len(brevo_api_key) if brevo_api_key else 0}")
     print(f"   DEFAULT_FROM_EMAIL: {DEFAULT_FROM_EMAIL}")
-    print(f"   EMAIL_USE_TLS: {EMAIL_USE_TLS}")
-    if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
-        print("   ⚠️  WARNING: BREVO_SMTP_USER or BREVO_SMTP_KEY environment variable is NOT SET!")
-        print("   ⚠️  Emails will NOT be sent. Add them in Render Dashboard.")
+    if not brevo_api_key:
+        print("   ⚠️  WARNING: BREVO_API_KEY environment variable is NOT SET!")
+        print("   ⚠️  Emails will NOT be sent. Add BREVO_API_KEY in Render Dashboard.")
+    else:
+        print("   ✅ Brevo API configured - using HTTP API (no SMTP)")
     print("=" * 50)
 else:
     # Gmail Configuration for Local Development
