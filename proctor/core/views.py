@@ -1451,19 +1451,8 @@ def student_profile(request):
     
     departments = Department.objects.filter(is_active=True).order_by('name')
     
-    # Get semesters and divisions based on selected department (optional models)
-    semesters = []
-    divisions = []
-    try:
-        from .models import Semester as _Semester, Division as _Division
-        if user.department:
-            semesters = _Semester.objects.filter(department=user.department, is_active=True).order_by('name')
-            if getattr(user, 'semester', None):
-                divisions = _Division.objects.filter(department=user.department, semester=user.semester, is_active=True).order_by('name')
-            else:
-                divisions = _Division.objects.filter(department=user.department, is_active=True).order_by('name')
-    except Exception:
-        pass
+    # Semester and division are OPTIONAL - don't load them by default
+    # Admin can assign them if needed
     
     if request.method == 'POST':
         # Update profile information
@@ -1477,7 +1466,7 @@ def student_profile(request):
         user.course = request.POST.get('course')
         user.current_semester = request.POST.get('current_semester')
         
-        # Handle department selection (optional - managed by admin)
+        # Handle department selection (OPTIONAL - can be assigned by admin)
         department_id = request.POST.get('department')
         if department_id:
             try:
@@ -1485,32 +1474,17 @@ def student_profile(request):
             except Department.DoesNotExist:
                 pass  # Ignore invalid department, it's optional
         
-        # Handle semester selection
-        semester_id = request.POST.get('semester')
-        if semester_id and user.department:
-            try:
-                from .models import Semester as _Semester
-                user.semester = _Semester.objects.get(id=semester_id, department=user.department, is_active=True)
-            except Exception:
-                pass
-        else:
-            user.semester = None
+        # Semester is OPTIONAL - students don't need to select it
+        # Remove semester selection logic - admin manages this
         
-        # Handle division selection
-        division_id = request.POST.get('division')
-        if division_id and user.department:
-            try:
-                from .models import Division as _Division
-                user.division = _Division.objects.get(id=division_id, department=user.department, is_active=True)
-            except Exception:
-                pass
-        else:
-            user.division = None
+        # Division is OPTIONAL - students don't need to select it
+        # Remove division selection logic - admin manages this
         
-        # Save profile first
+        # Save profile
         user.save()
         
-        # Check completion - only require name and email (department is optional, managed by admin)
+        # Check completion - only require name and email
+        # Department, semester, division are OPTIONAL
         required_fields = [user.first_name, user.last_name, user.email]
         
         if all(required_fields):
@@ -1528,8 +1502,6 @@ def student_profile(request):
     context = {
         'user': user,
         'departments': departments,
-        'semesters': semesters,
-        'divisions': divisions,
         'is_first_login': not user.is_profile_complete,
     }
     return render(request, 'student_profile.html', context)
