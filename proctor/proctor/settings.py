@@ -223,18 +223,31 @@ LOGGING = {
 # Load SMTP credentials from JSON file
 from core.config import smtp_credentials
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = smtp_credentials.get('SMTP_HOST', 'smtp.gmail.com')
-EMAIL_PORT = smtp_credentials.get('SMTP_PORT', 587)
-EMAIL_USE_TLS = smtp_credentials.get('EMAIL_USE_TLS', True)
-EMAIL_USE_SSL = smtp_credentials.get('EMAIL_USE_SSL', False)
-EMAIL_HOST_USER = smtp_credentials.get('SMTP_USER', '')
-EMAIL_HOST_PASSWORD = smtp_credentials.get('SMTP_API_KEY', '')
-DEFAULT_FROM_EMAIL = smtp_credentials.get('FROM_EMAIL', 'Smart Face Proctor <noreply@proctorsystem.com>')
-SERVER_EMAIL = EMAIL_HOST_USER
-
-# Site URL for email links
-SITE_URL = 'http://localhost:8000'  # Change to your production URL
+# Use SendGrid for production (Render), Gmail for local development
+if ENV == 'render':
+    # SendGrid Configuration for Render (free tier: 100 emails/day)
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp.sendgrid.net'
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_USE_SSL = False
+    EMAIL_HOST_USER = 'apikey'  # This is literal string 'apikey'
+    EMAIL_HOST_PASSWORD = os.environ.get('SENDGRID_API_KEY', '')  # Set in Render environment
+    DEFAULT_FROM_EMAIL = os.environ.get('FROM_EMAIL', 'Smart Face Proctor <noreply@smartfaceproctor.com>')
+    SERVER_EMAIL = DEFAULT_FROM_EMAIL
+    SITE_URL = 'https://smartfaceproctor.onrender.com'
+else:
+    # Gmail Configuration for Local Development
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = smtp_credentials.get('SMTP_HOST', 'smtp.gmail.com')
+    EMAIL_PORT = smtp_credentials.get('SMTP_PORT', 587)
+    EMAIL_USE_TLS = smtp_credentials.get('EMAIL_USE_TLS', True)
+    EMAIL_USE_SSL = smtp_credentials.get('EMAIL_USE_SSL', False)
+    EMAIL_HOST_USER = smtp_credentials.get('SMTP_USER', '')
+    EMAIL_HOST_PASSWORD = smtp_credentials.get('SMTP_API_KEY', '')
+    DEFAULT_FROM_EMAIL = smtp_credentials.get('FROM_EMAIL', 'Smart Face Proctor <noreply@proctorsystem.com>')
+    SERVER_EMAIL = EMAIL_HOST_USER
+    SITE_URL = 'http://localhost:8000'
 
 # Create logs directory if it doesn't exist
 import os
