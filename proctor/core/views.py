@@ -1477,55 +1477,41 @@ def student_profile(request):
         user.course = request.POST.get('course')
         user.current_semester = request.POST.get('current_semester')
         
-        # Handle department selection
+        # Handle department selection (optional - managed by admin)
         department_id = request.POST.get('department')
         if department_id:
             try:
                 user.department = Department.objects.get(id=department_id, is_active=True)
-                # Reset semester and division if department changes
-                try:
-                    from .models import Semester as _Semester, Division as _Division
-                    semesters = _Semester.objects.filter(department=user.department, is_active=True).order_by('name')
-                    divisions = _Division.objects.filter(department=user.department, is_active=True).order_by('name')
-                except Exception:
-                    semesters = []
-                    divisions = []
             except Department.DoesNotExist:
-                messages.error(request, 'Selected department is not valid.')
-                return redirect('student_profile')
+                pass  # Ignore invalid department, it's optional
         
         # Handle semester selection
         semester_id = request.POST.get('semester')
-        if semester_id:
+        if semester_id and user.department:
             try:
-                from .models import Semester as _Semester, Division as _Division
+                from .models import Semester as _Semester
                 user.semester = _Semester.objects.get(id=semester_id, department=user.department, is_active=True)
-                # Update divisions based on selected semester
-                divisions = _Division.objects.filter(department=user.department, semester=user.semester, is_active=True).order_by('name')
             except Exception:
-                messages.error(request, 'Selected semester is not valid.')
+                pass
         else:
             user.semester = None
         
         # Handle division selection
         division_id = request.POST.get('division')
-        if division_id:
+        if division_id and user.department:
             try:
                 from .models import Division as _Division
                 user.division = _Division.objects.get(id=division_id, department=user.department, is_active=True)
             except Exception:
-                messages.error(request, 'Selected division is not valid.')
+                pass
         else:
             user.division = None
         
-        # Check if essential fields are filled (simplified for student)
-        # Make sure profile is saved first
+        # Save profile first
         user.save()
         
-        # Check completion - only require basic fields for students
-        required_fields = [
-            user.first_name, user.last_name, user.email, user.department
-        ]
+        # Check completion - only require name and email (department is optional, managed by admin)
+        required_fields = [user.first_name, user.last_name, user.email]
         
         if all(required_fields):
             user.is_profile_complete = True
@@ -1537,7 +1523,7 @@ def student_profile(request):
         if user.is_profile_complete:
             messages.success(request, 'Profile updated successfully!')
         else:
-            messages.warning(request, 'Please fill in name, email, and department to complete your profile.')
+            messages.warning(request, 'Please fill in your first name, last name, and email to complete your profile.')
     
     context = {
         'user': user,

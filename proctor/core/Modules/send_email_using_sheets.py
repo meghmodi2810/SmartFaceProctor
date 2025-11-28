@@ -131,6 +131,51 @@ class SmartFaceProctorMailer:
             }
 
     def send_email(self, recipient, subject, body):
+        """Send email using Django's email backend (works with SendGrid on Render)"""
+        try:
+            # Try using Django's send_mail which uses settings.py configuration
+            from django.core.mail import send_mail
+            from django.conf import settings
+            
+            from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None)
+            
+            if not from_email:
+                # Fallback to smtp_creds if Django settings not available
+                from_email = self.smtp_creds.get('FROM_EMAIL', 'noreply@smartfaceproctor.com')
+            
+            print(f"📧 Sending email to {recipient} from {from_email}")
+            
+            result = send_mail(
+                subject=subject,
+                message=body,
+                from_email=from_email,
+                recipient_list=[recipient],
+                fail_silently=False,
+            )
+            
+            if result:
+                print(f"✅ Email sent successfully to {recipient}")
+                return True
+            else:
+                print(f"❌ send_mail returned 0 for {recipient}")
+                return False
+                
+        except Exception as django_error:
+            print(f"⚠️ Django send_mail failed: {django_error}")
+            
+            # Fallback to direct SMTP if Django mail fails and we have credentials
+            if self.smtp_creds and self.smtp_creds.get('FROM_EMAIL'):
+                try:
+                    return self._send_email_direct_smtp(recipient, subject, body)
+                except Exception as smtp_error:
+                    print(f"❌ Direct SMTP also failed: {smtp_error}")
+                    return False
+            else:
+                print(f"❌ No SMTP credentials available for fallback")
+                return False
+
+    def _send_email_direct_smtp(self, recipient, subject, body):
+        """Fallback: Send email using direct SMTP connection"""
         msg = EmailMessage()
         msg.set_content(body)
         msg['Subject'] = subject
@@ -141,10 +186,10 @@ class SmartFaceProctorMailer:
             with smtplib.SMTP_SSL(self.smtp_creds['SMTP_HOST'], self.smtp_creds['SMTP_PORT']) as smtp:
                 smtp.login(self.smtp_creds['SMTP_USER'], self.smtp_creds['SMTP_API_KEY'])
                 smtp.send_message(msg)
-            print(f"Sent email to {recipient}")
+            print(f"✅ Sent email to {recipient} via direct SMTP")
             return True
         except Exception as e:
-            print(f"Failed to send email to {recipient}: {e}")
+            print(f"❌ Failed to send email to {recipient}: {e}")
             return False
 
     def send_password_reset_email(self, email):
@@ -154,18 +199,18 @@ class SmartFaceProctorMailer:
         if result['success']:
             subject = "Password Reset - Smart Face Proctor"
             body = f"""
-            Hello {result['user_name']},
-            
-            Your password has been reset successfully.
-            
-            Your login credentials:
-            ID: {result['user_id']}
-            New Password: {result['new_password']}
-            
-            Please login with these credentials and change your password after login.
-            
-            Best regards,
-            Smart Face Proctor Team
+Hello {result['user_name']},
+
+Your password has been reset successfully.
+
+Your login credentials:
+ID: {result['user_id']}
+New Password: {result['new_password']}
+
+Please login with these credentials and change your password after login.
+
+Best regards,
+Smart Face Proctor Team
             """
             
             email_sent = self.send_email(email, subject, body)
@@ -192,17 +237,17 @@ class SmartFaceProctorMailer:
             
             subject = "Password Reset OTP - Smart Face Proctor"
             body = f"""
-            Hello {user_name},
-            
-            You have requested to reset your password.
-            
-            Your OTP (One-Time Password) is: {otp}
-            
-            This OTP is valid for 15 minutes only.
-            If you didn't request this password reset, please ignore this email.
-            
-            Best regards,
-            Smart Face Proctor Team
+Hello {user_name},
+
+You have requested to reset your password.
+
+Your OTP (One-Time Password) is: {otp}
+
+This OTP is valid for 15 minutes only.
+If you didn't request this password reset, please ignore this email.
+
+Best regards,
+Smart Face Proctor Team
             """
             
             email_sent = self.send_email(email, subject, body)
