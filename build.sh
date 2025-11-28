@@ -15,3 +15,7 @@ python manage.py collectstatic --no-input
 
 # Run migrations
 python manage.py migrate
+
+# Create default admin account (safe to run multiple times)
+echo "Creating default admin account..."
+python manage.py create_default_admin
