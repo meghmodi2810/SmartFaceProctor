@@ -223,17 +223,17 @@ LOGGING = {
 # Load SMTP credentials from JSON file
 from core.config import smtp_credentials
 
-# Use SendGrid for production (Render), Gmail for local development
+# Use Brevo (Sendinblue) for production (Render), Gmail for local development
 if ENV == 'render':
-    # SendGrid Configuration for Render (free tier: 100 emails/day)
+    # Brevo (Sendinblue) Configuration for Render (free tier: 300 emails/day)
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-    EMAIL_HOST = 'smtp.sendgrid.net'
+    EMAIL_HOST = 'smtp-relay.brevo.com'  # Brevo SMTP server
     EMAIL_PORT = 587
     EMAIL_USE_TLS = True
     EMAIL_USE_SSL = False
-    EMAIL_HOST_USER = 'apikey'  # This is literal string 'apikey'
-    EMAIL_HOST_PASSWORD = os.environ.get('SENDGRID_API_KEY', '')  # Set in Render environment
-    # IMPORTANT: Use verified sender email from SendGrid dashboard
+    EMAIL_HOST_USER = os.environ.get('BREVO_SMTP_USER', '')  # Your Brevo login email
+    EMAIL_HOST_PASSWORD = os.environ.get('BREVO_SMTP_KEY', '')  # Your Brevo SMTP API key
+    # IMPORTANT: Use verified sender email from Brevo dashboard
     DEFAULT_FROM_EMAIL = os.environ.get('FROM_EMAIL', 'meghmodi4ever@gmail.com')
     SERVER_EMAIL = DEFAULT_FROM_EMAIL
     SITE_URL = 'https://smartfaceproctor.onrender.com'
@@ -241,18 +241,18 @@ if ENV == 'render':
     
     # Debug: Print email configuration on startup
     print("=" * 50)
-    print("📧 EMAIL CONFIGURATION (RENDER/SENDGRID)")
+    print("📧 EMAIL CONFIGURATION (RENDER/BREVO)")
     print(f"   ENV: {ENV}")
     print(f"   EMAIL_HOST: {EMAIL_HOST}")
     print(f"   EMAIL_PORT: {EMAIL_PORT}")
-    print(f"   EMAIL_HOST_USER: {EMAIL_HOST_USER}")
+    print(f"   EMAIL_HOST_USER: {EMAIL_HOST_USER[:5]}***" if EMAIL_HOST_USER else "   EMAIL_HOST_USER: NOT SET")
     print(f"   EMAIL_HOST_PASSWORD SET: {bool(EMAIL_HOST_PASSWORD)}")
     print(f"   EMAIL_HOST_PASSWORD LENGTH: {len(EMAIL_HOST_PASSWORD) if EMAIL_HOST_PASSWORD else 0}")
     print(f"   DEFAULT_FROM_EMAIL: {DEFAULT_FROM_EMAIL}")
     print(f"   EMAIL_USE_TLS: {EMAIL_USE_TLS}")
-    if not EMAIL_HOST_PASSWORD:
-        print("   ⚠️  WARNING: SENDGRID_API_KEY environment variable is NOT SET!")
-        print("   ⚠️  Emails will NOT be sent. Add SENDGRID_API_KEY in Render Dashboard.")
+    if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
+        print("   ⚠️  WARNING: BREVO_SMTP_USER or BREVO_SMTP_KEY environment variable is NOT SET!")
+        print("   ⚠️  Emails will NOT be sent. Add them in Render Dashboard.")
     print("=" * 50)
 else:
     # Gmail Configuration for Local Development

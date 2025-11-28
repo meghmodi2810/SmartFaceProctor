@@ -100,8 +100,8 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Semester<span class="text-danger">*</span></label>
-                            <select name="semester" id="semester" class="form-control custom-input" required onchange="updateDivisions()">
+                            <label class="form-label">Semester</label>
+                            <select name="semester" id="semester" class="form-control custom-input" onchange="updateDivisions()">
                                 <option value="">Select Semester</option>
                                 {% for sem in semesters %}
                                 <option value="{{ sem.id }}" {% if user.semester_id == sem.id %}selected{% endif %}>
